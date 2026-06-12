@@ -1,0 +1,51 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+.DS_Store
+
+# Agent/IDE configs
+.adal/
+.agent/
+.agents/
+.augment/
+.claude/skills/
+.codebuddy/
+.commandcode/
+.continue/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pi/
+.pochi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills-lock.json
+skills/
+
+# Convex example generated (types only; JS stubs committed for tests)
+example/convex/_generated/ai/
+
+# Compiled output emitted next to example source by `convex dev` tsc.
+# Source is .ts; the _generated/ stubs (subdir) are committed for tests.
+example/convex/*.js
+example/convex/*.js.map
+example/convex/*.d.ts
+example/convex/*.d.ts.map
+example/convex/_generated/ai/
