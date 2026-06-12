@@ -1,152 +1,176 @@
-# @vllnt/convex-permissions
-
 [![npm](https://img.shields.io/npm/v/@vllnt/convex-permissions.svg)](https://www.npmjs.com/package/@vllnt/convex-permissions)
+[![CI](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml/badge.svg)](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/@vllnt/convex-permissions.svg)](./LICENSE)
 
-Typed authorization for Convex. Define your roles and access policies **once**,
-then enforce them inside every query, mutation, and action with type-safe guards
-— `require`, `check`, `can`. Roles and policies are the developer's, declared in
-code; the toolkit gives the DX to verify access without scattering ad-hoc `if`
-checks through your backend.
+# @vllnt/convex-permissions
+
+Role-based access control as a Convex component — typed, sandboxed,
+runtime-editable roles and grants keyed by opaque refs.
+
+Define roles and their grants, assign them to opaque subject refs (optionally
+scoped for multi-tenancy), then check or enforce access from any Convex query,
+mutation, or action. Roles and assignments live in the component's own sandboxed
+tables, so they are editable at runtime — no redeploy to change who can do what.
 
 ```ts
-const permissions = definePermissions({
-  roles: ["admin", "editor", "viewer"] as const,
-  grants: {
-    admin:  ["doc.*"],
-    editor: ["doc.read", "doc.edit"],
-    viewer: ["doc.read"],
-  },
-  policies: {
-    "doc.edit":   ({ subject, resource }) => subject.role === "admin" || resource.ownerId === subject.id,
-    "doc.delete": ({ subject, resource }) => subject.role === "admin" && !resource.locked,
-  },
-});
-
-// in any mutation — typed action, throws ConvexError on deny
-await permissions.require(ctx, "doc.edit", doc);
+// Define a role, assign it, enforce it — all from host functions.
+await permissions.defineRole(ctx, { name: "editor", grants: ["doc.read", "doc.edit"] });
+await permissions.assign(ctx, { subjectRef: userId, role: "editor" });
+await permissions.require(ctx, { subjectRef: userId, action: "doc.edit" }); // throws on deny
 ```
 
-> **Status: design stub.** API below is the proposed surface, not yet
-> implemented. The load-bearing decision — ship as a typed npm package or a
-> sandboxed `app.use()` Convex component — is **open**. See
-> [ROADMAP.md](./ROADMAP.md) (`primitive-decision`).
+## Features
 
----
+- **Stored, runtime-editable RBAC** — roles, grants, and assignments live in the
+  component's sandboxed tables; change them with a mutation, no redeploy.
+- **Typed end to end** — `Permissions<TRole, TAction>` is generic over your role
+  and action unions, so `assign`, `check`, and `require` are autocompleted and
+  typo-safe.
+- **Wildcard grants** — `"doc.*"` grants every `doc.` action; `"*"` grants
+  everything (a super-role is just a role granted `"*"`).
+- **Scoped / multi-tenant** — assign a role within an opaque `scopeRef` (e.g. an
+  org); unscoped assignments apply globally.
+- **Agnostic by construction** — opaque `subjectRef` / `scopeRef`, no auth
+  library, no domain model, no vendor. The host owns identity and passes refs in.
+- **`require` throws a structured error** — `ConvexError<PermissionDenied>` the
+  host maps to a 403.
+- **Default-deny** — unknown subjects and unmatched actions are denied.
+- **Runs anywhere** — identical on Convex Cloud and self-hosted `convex-backend`.
 
-## The model: RBAC default, ABAC escape hatch
-
-Don't choose RBAC *or* ABAC — layer them. RBAC is the special case of ABAC where
-the only attribute is the subject's role. Roles cover the 80%; policy functions
-cover the ownership / state / context cases roles can't express.
+## Architecture
 
 ```
-require(ctx, action, resource?)
-        │
-        ▼
-┌─────────────────────────────┐
-│ RBAC: does subject.role have │── grant, no policy ─▶ ALLOW   (reason: "grant")
-│ a grant for this action?     │
-└──────────────┬──────────────┘
-               │ policy exists for action
-               ▼
-┌─────────────────────────────┐
-│ ABAC: run policy fn with      │── true  ─▶ ALLOW             (reason: "policy")
-│ (subject, resource, ctx)      │── false ─▶ DENY              (reason: "policy")
-└──────────────┬──────────────┘
-               │ no grant, no policy
-               ▼
-             DENY                                              (reason: "default-deny")
+src/
+├── shared.ts        # pure grant-matching + token validation
+├── test.ts          # convex-test register() helper
+├── client/          # Permissions<TRole, TAction> — the public API
+└── component/        # sandboxed tables: roles + assignments
 ```
 
-- **RBAC** — `grants` map roles to static permissions. Cheap, resourceless,
-  cacheable. `"doc.read"`, wildcards like `"doc.*"`.
-- **ABAC** — `policies` are functions evaluated against the loaded resource and
-  the caller's attributes. They run inside your Convex function, where `ctx` and
-  the resource already live — so attribute checks are ergonomic, not a separate
-  policy engine.
-- **ReBAC** (relationship/graph checks — "can edit via org → folder → doc") is
-  deliberately **out of scope** for the first cut. It needs stored relationship
-  tuples, which is the case that would justify a real component (see ROADMAP
-  `Later`).
+The component stores two tables — `roles` (name → grants) and `assignments`
+(subjectRef → role, optional scopeRef). The host never reads them directly; every
+access goes through the `Permissions` client.
 
-This is a **decision engine**: it answers "can subject X do action Y on resource
-Z?". It does **not** answer "list every doc X can see" — that filtering belongs
-with your resource data, in your own tables. Authorize at the boundary; filter
-with your own indexed queries.
+## Installation
 
----
+```bash
+npm install @vllnt/convex-permissions
+```
 
-## Configuration
+Peer dependency: `convex@^1.36.1`.
 
-`definePermissions(config)` is where roles and policies are declared. Proposed
-surface (subject to the open decisions in the ROADMAP):
+Register the component in your app:
 
 ```ts
-definePermissions({
-  // Required — the role union. Drives type inference for grants + checks.
-  roles: ["admin", "editor", "viewer"] as const,
+// convex/convex.config.ts
+import { defineApp } from "convex/server";
+import permissions from "@vllnt/convex-permissions/convex.config";
 
-  // RBAC layer — role → static permission grants. Wildcards allowed.
-  grants: {
-    admin:  ["doc.*", "org.*"],
-    editor: ["doc.read", "doc.edit"],
-    viewer: ["doc.read"],
-  },
-
-  // ABAC layer — per-action policy fns. Run when present; receive the resource.
-  policies: {
-    "doc.edit": ({ subject, resource, ctx }) => resource.ownerId === subject.id,
-  },
-
-  // Adapter — how to resolve the caller's identity + role from ctx.
-  // The toolkit does NOT store role assignments; the host owns that data
-  // (convex-auth identity claims, a users-table column, or a custom source).
-  subject: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return { id: identity.subject, role: identity.role as Role };
-  },
-
-  // Optional — role inheritance (admin inherits editor's grants).
-  hierarchy: { admin: ["editor"], editor: ["viewer"] },
-
-  // Optional — deny behavior for `require`. Default: throw ConvexError.
-  onDeny: "throw", // "throw" | "return"
-});
+const app = defineApp();
+app.use(permissions);
+export default app;
 ```
 
-**Key design point:** role *assignments* (who is an admin) are not stored by this
-package — the `subject` adapter reads them from wherever the host already keeps
-identity. That keeps the toolkit a pure, typed enforcement layer with no data
-sandbox to sync. (If assignments must be **runtime-editable + audited**, that
-flips the primitive to a stored component — an open ROADMAP decision.)
+Instantiate the typed client once and re-export the host functions you need:
 
----
+```ts
+// convex/permissions.ts
+import { components } from "./_generated/api";
+import { Permissions } from "@vllnt/convex-permissions";
 
-## API (proposed)
+type Role = "admin" | "editor" | "viewer";
+type Action = "doc.read" | "doc.edit" | "doc.delete";
 
-| Method | Returns | Purpose |
-|--------|---------|---------|
-| `require(ctx, action, resource?)` | `void` | Enforce — throws `ConvexError` on deny |
-| `check(ctx, action, resource?)` | `boolean` | Boolean decision, no throw |
-| `can(subject, action, resource?)` | `boolean` | Pure check against a known subject |
-| `permissionsFor(subject)` | `string[]` | Resolved grants for a role (RBAC only) |
+export const permissions = new Permissions<Role, Action>(components.permissions);
+```
 
-`action` and `role` are inferred from `roles` + `grants`, so checks are
-autocompleted and typo-safe. A React `useCan(action)` hook mirrors the
-`@vllnt/convex-flags` client surface (proposed — see ROADMAP `dx-tooling`).
+## Usage
 
----
+### Define roles (runtime-editable)
+
+```ts
+await permissions.defineRole(ctx, { name: "admin", grants: ["*"] });
+await permissions.defineRole(ctx, { name: "editor", grants: ["doc.read", "doc.edit"] });
+await permissions.defineRole(ctx, { name: "viewer", grants: ["doc.read"] });
+```
+
+`defineRole` upserts by name — call it again to change a role's grants without a
+redeploy. Wrap it (and `assign` / `revoke`) behind your own admin authorization.
+
+### Assign and revoke
+
+```ts
+await permissions.assign(ctx, { subjectRef: userId, role: "editor" });                 // global
+await permissions.assign(ctx, { subjectRef: userId, role: "admin", scopeRef: orgId });  // scoped
+await permissions.revoke(ctx, { subjectRef: userId, role: "editor" });
+```
+
+`assign` resolves `true` when newly created, `false` if the subject already held
+the role. The host resolves identity (`userId`, `orgId`) — the component treats
+them as opaque strings.
+
+### Check and enforce
+
+```ts
+// boolean, no throw
+if (await permissions.check(ctx, { subjectRef: userId, action: "doc.edit" })) {
+  // ...
+}
+
+// throws ConvexError({ code: "FORBIDDEN", ... }) on deny
+await permissions.require(ctx, { subjectRef: userId, action: "doc.edit", scopeRef: orgId });
+```
+
+A scoped check considers the subject's global roles **and** roles scoped to that
+`scopeRef`; an unscoped check considers only global roles.
+
+### Introspect
+
+```ts
+await permissions.rolesFor(ctx, { subjectRef: userId });        // ["editor", "viewer"]
+await permissions.permissionsFor(ctx, { subjectRef: userId });  // ["doc.edit", "doc.read"]
+await permissions.listRoles(ctx);                                // all role definitions
+```
+
+## API Reference
+
+See [docs/API.md](docs/API.md). Every method takes the host `ctx` first.
+
+## Security Model
+
+- **The host owns auth.** It authenticates the caller, resolves identity to an
+  opaque `subjectRef`, and decides which `scopeRef` (if any) applies. The
+  component never sees credentials, sessions, or user records.
+- **Opaque refs only.** `subjectRef`, `scopeRef`, and action keys are arbitrary
+  strings the component never interprets — drop it into any app, any auth model,
+  any domain.
+- **Default-deny.** No matching role / grant ⇒ denied. `require` throws
+  `ConvexError<PermissionDenied>`.
+- **Boundary validation.** Role names and subject refs must match
+  `^[A-Za-z0-9_.:-]{1,128}$`; invalid input is rejected at the mutation boundary.
+- **Sandboxed storage.** Roles and assignments live in the component's own
+  tables — no host table is read or written. Gate the management methods behind
+  your own admin authorization.
+
+> This is a **decision engine** — it answers "can subject X do action Y?". It
+> does not list "every resource X can see"; that filtering belongs with your
+> resource data and indexes.
 
 ## Testing
 
-Backend logic is covered with `convex-test` (in-process, no running backend);
-end-to-end flows use the `@vllnt/testing` 4-layer framework against a real Convex
-backend — never a mock. Per-perspective focus: **Security** (auth bypass, default
-deny), **State** (role/policy precedence), **Contract** (typed action surface).
+```bash
+pnpm test           # single run
+pnpm test:coverage  # enforced 100% on covered files
+```
 
----
+Tests run against the real component runtime via `convex-test`
+(`@edge-runtime/vm`), not mocks — every public method is exercised end to end
+through the `example/convex/` host-app harness, happy path and adversarial.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

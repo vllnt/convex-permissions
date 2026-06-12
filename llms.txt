@@ -1,0 +1,34 @@
+# @vllnt/convex-permissions
+
+> Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs
+
+`@vllnt/convex-permissions` is a publishable Convex component. It targets `convex@^1.36.1`.
+
+It provides stored, runtime-editable role-based access control. The component owns two sandboxed
+tables — `roles` (a role name → its grants) and `assignments` (an opaque `subjectRef` → a role,
+with an optional opaque `scopeRef` for multi-tenancy). The consumer-facing `Permissions<TRole,
+TAction>` client, generic over the host's role and action unions, exposes `defineRole`, `removeRole`,
+`assign`, `revoke`, `check`, `require`, `rolesFor`, `permissionsFor`, and `listRoles`. Grants support
+exact, prefix-wildcard (`doc.*`), and global (`*`) matching; checks are default-deny and `require`
+throws `ConvexError<PermissionDenied>`. The component is agnostic on every axis — opaque refs, no auth
+library, no domain model, no vendor — and runs identically on Convex Cloud and self-hosted backends.
+
+## Docs
+
+- [README](README.md): Project overview, installation, usage examples, architecture
+- [API Reference](docs/API.md): Public class methods, return shapes, input validation
+- [Changelog](CHANGELOG.md): Version history and release notes
+- [Contributing](CONTRIBUTING.md): Development setup, validation commands, release workflow
+
+## Examples
+
+- [Example component wrapper](example/convex/example.ts): Host-app wrapper functions
+- [Example tests](example/convex/example.test.ts): End-to-end usage coverage with `convex-test`
+
+## Optional
+
+- [AGENTS](AGENTS.md): Canonical agent instructions for this repository
+- [Security Policy](SECURITY.md): Vulnerability reporting policy
+- [Code of Conduct](CODE_OF_CONDUCT.md): Community participation guidelines
+- [License](LICENSE)
+- [Full source bundle](llms-full.txt): Aggregated README, changelog, API docs, and key source files
