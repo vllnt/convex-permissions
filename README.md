@@ -1,6 +1,8 @@
-[![npm](https://img.shields.io/npm/v/@vllnt/convex-permissions.svg)](https://www.npmjs.com/package/@vllnt/convex-permissions)
+<!-- Badges -->
+[![Convex Component](https://img.shields.io/badge/convex-component-EE342F.svg)](https://www.convex.dev/components)
+[![npm version](https://img.shields.io/npm/v/@vllnt/convex-permissions.svg)](https://www.npmjs.com/package/@vllnt/convex-permissions)
 [![CI](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml/badge.svg)](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@vllnt/convex-permissions.svg)](./LICENSE)
+[![License](https://img.shields.io/npm/l/@vllnt/convex-permissions.svg)](./LICENSE)
 
 # @vllnt/convex-permissions
 
@@ -44,20 +46,26 @@ src/
 ├── shared.ts        # pure grant-matching + token validation
 ├── test.ts          # convex-test register() helper
 ├── client/          # Permissions<TRole, TAction> — the public API
-└── component/        # sandboxed tables: roles + assignments
+└── component/       # sandboxed tables: roles + assignments
 ```
 
-The component stores two tables — `roles` (name → grants) and `assignments`
-(subjectRef → role, optional scopeRef). The host never reads them directly; every
-access goes through the `Permissions` client.
+The component owns two sandboxed tables — the host never reads them directly:
+
+| Table | Fields | Indexes |
+|-------|--------|---------|
+| `roles` | `name`, `grants[]`, `description?`, `updatedAt` | `by_name` |
+| `assignments` | `subjectRef`, `role`, `scopeRef?`, `createdAt` | `by_subject`, `by_role`, `by_subject_role_scope` |
+
+Every access goes through the `Permissions` client — host tables are never read or
+written by the component.
 
 ## Installation
+
+> **Peer dependency:** `convex@^1.36.1`
 
 ```bash
 npm install @vllnt/convex-permissions
 ```
-
-Peer dependency: `convex@^1.36.1`.
 
 Register the component in your app:
 
@@ -134,7 +142,19 @@ await permissions.listRoles(ctx);                                // all role def
 
 ## API Reference
 
-See [docs/API.md](docs/API.md). Every method takes the host `ctx` first.
+See [docs/API.md](docs/API.md). Summary:
+
+| Method | ctx | Description |
+|--------|-----|-------------|
+| `defineRole(ctx, { name, grants, description? })` | mutation | Upsert a role (runtime-editable) |
+| `removeRole(ctx, name)` | mutation | Delete a role by name |
+| `assign(ctx, { subjectRef, role, scopeRef? })` | mutation | Grant a role to a subject |
+| `revoke(ctx, { subjectRef, role, scopeRef? })` | mutation | Remove a role from a subject |
+| `check(ctx, { subjectRef, action, scopeRef? })` | query/mutation | Boolean permission check (default-deny) |
+| `require(ctx, { subjectRef, action, scopeRef? })` | query/mutation | Enforce access — throws on deny |
+| `rolesFor(ctx, { subjectRef, scopeRef? })` | query/mutation | List role names for a subject |
+| `permissionsFor(ctx, { subjectRef, scopeRef? })` | query/mutation | List distinct grants for a subject |
+| `listRoles(ctx)` | query/mutation | All role definitions |
 
 ## Security Model
 
@@ -170,6 +190,14 @@ through the `example/convex/` host-app harness, happy path and adversarial.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Author
+
+Built by [bntvllnt](https://github.com/bntvllnt) · [bntvllnt.com](https://bntvllnt.com) · [X @bntvllnt](https://x.com/bntvllnt)
+
+Part of the [@vllnt](https://github.com/vllnt) Convex component fleet — [vllnt.com](https://vllnt.com)
+
+If this is useful, [sponsor the work](https://github.com/sponsors/bntvllnt).
 
 ## License
 
