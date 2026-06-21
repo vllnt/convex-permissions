@@ -95,5 +95,5 @@ When any of these change, update the corresponding docs in the same commit:
 | New feature or breaking change | `CHANGELOG.md`, `README.md` Features |
 | Input validation rules changed | `docs/API.md` Error codes |
 
-Always run `pnpm lint && pnpm build && pnpm test && pnpm generate:llms` before committing docs
+Always run `pnpm lint && pnpm build && pnpm test` before committing docs
 changes.
