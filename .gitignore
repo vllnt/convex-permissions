@@ -11,7 +11,6 @@ coverage/
 .agent/
 .agents/
 .augment/
-.claude/skills/
 .codebuddy/
 .commandcode/
 .continue/
@@ -49,3 +48,6 @@ example/convex/*.js.map
 example/convex/*.d.ts
 example/convex/*.d.ts.map
 example/convex/_generated/ai/
+
+# AGENTS.md is the only agent instruction surface
+.claude/

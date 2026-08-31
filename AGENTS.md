@@ -13,6 +13,11 @@ Convex agent skills for common tasks can be installed by running `npx convex ai-
 Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and
 grants keyed by opaque refs.
 
+## Agent instructions
+
+`AGENTS.md` is the sole agent-instruction source for this repository. Do not add
+`CLAUDE.md` or `.claude` content.
+
 ## Quick Start
 
 ```bash
@@ -97,3 +102,9 @@ When any of these change, update the corresponding docs in the same commit:
 
 Always run `pnpm lint && pnpm build && pnpm test && pnpm generate:llms` before committing docs
 changes.
+
+## Generated code
+
+- Every `**/_generated/**` file is owned exclusively by Convex CLI codegen.
+- Never create, edit, lint, or format generated files manually.
+- Run `pnpm codegen` to regenerate them and commit the generated output unchanged.
