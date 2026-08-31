@@ -17,7 +17,7 @@ export const defineRole = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.name))
       .unique();
     if (existing !== null) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("roles", existing._id, {
         grants: args.grants,
         description: args.description,
         updatedAt: Date.now(),
@@ -46,7 +46,7 @@ export const removeRole = mutation({
     if (existing === null) {
       return false;
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("roles", existing._id);
     return true;
   },
 });
@@ -105,7 +105,7 @@ export const revoke = mutation({
     if (existing === null) {
       return false;
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("assignments", existing._id);
     return true;
   },
 });
