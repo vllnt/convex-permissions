@@ -134,6 +134,15 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Resolve scoped assignments through a `(subjectRef, scopeRef)` index and fetch only assigned
+  role definitions, avoiding full per-subject assignment and global role-table scans on access checks.
+- Treat Convex `_generated` output as CLI-owned, exclude it from formatting, and expose a
+  dedicated codegen script.
+- Refresh all direct dependencies to their latest compatible releases for canary validation.
+- Require `convex@^1.45.0` and update `convex-test` to `^0.0.56`.
+
 ## [0.1.0] - 2026-06-12
 
 ### Added
@@ -543,7 +552,7 @@ export default defineSchema({
     scopeRef: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index("by_subject", ["subjectRef"])
+    .index("by_subject_scope", ["subjectRef", "scopeRef"])
     .index("by_role", ["role"])
     .index("by_subject_role_scope", ["subjectRef", "role", "scopeRef"]),
 });
@@ -593,7 +602,7 @@ export const defineRole = mutation({
       .withIndex("by_name", (q) => q.eq("name", args.name))
       .unique();
     if (existing !== null) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("roles", existing._id, {
         grants: args.grants,
         description: args.description,
         updatedAt: Date.now(),
@@ -622,7 +631,7 @@ export const removeRole = mutation({
     if (existing === null) {
       return false;
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("roles", existing._id);
     return true;
   },
 });
@@ -681,7 +690,7 @@ export const revoke = mutation({
     if (existing === null) {
       return false;
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("assignments", existing._id);
     return true;
   },
 });
@@ -704,16 +713,24 @@ async function applicableRoleNames(
   subjectRef: string,
   scopeRef: string | undefined,
 ): Promise<Set<string>> {
-  const assignments = await ctx.db
+  const globalAssignments = await ctx.db
     .query("assignments")
-    .withIndex("by_subject", (q) => q.eq("subjectRef", subjectRef))
+    .withIndex("by_subject_scope", (q) =>
+      q.eq("subjectRef", subjectRef).eq("scopeRef", undefined),
+    )
     .collect();
+  const scopedAssignments =
+    scopeRef === undefined
+      ? []
+      : await ctx.db
+          .query("assignments")
+          .withIndex("by_subject_scope", (q) =>
+            q.eq("subjectRef", subjectRef).eq("scopeRef", scopeRef),
+          )
+          .collect();
   const names = new Set<string>();
-  for (const assignment of assignments) {
-    // Global (unscoped) assignments apply everywhere; scoped ones only in-scope.
-    if (assignment.scopeRef === undefined || assignment.scopeRef === scopeRef) {
-      names.add(assignment.role);
-    }
+  for (const assignment of [...globalAssignments, ...scopedAssignments]) {
+    names.add(assignment.role);
   }
   return names;
 }
@@ -726,10 +743,17 @@ async function grantsForRoleNames(
   if (roleNames.size === 0) {
     return [];
   }
-  const roles = await ctx.db.query("roles").collect();
+  const roles = await Promise.all(
+    [...roleNames].map((name) =>
+      ctx.db
+        .query("roles")
+        .withIndex("by_name", (q) => q.eq("name", name))
+        .unique(),
+    ),
+  );
   const grants: string[] = [];
   for (const role of roles) {
-    if (roleNames.has(role.name)) {
+    if (role !== null) {
       grants.push(...role.grants);
     }
   }
