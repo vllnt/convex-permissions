@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format is based on
 
 ### Changed
 
+- Resolve scoped assignments through a `(subjectRef, scopeRef)` index and fetch only assigned
+  role definitions, avoiding full per-subject assignment and global role-table scans on access checks.
 - Treat Convex `_generated` output as CLI-owned, exclude it from formatting, and expose a
   dedicated codegen script.
 - Refresh all direct dependencies to their latest compatible releases for canary validation.

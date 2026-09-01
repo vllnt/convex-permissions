@@ -9,16 +9,24 @@ async function applicableRoleNames(
   subjectRef: string,
   scopeRef: string | undefined,
 ): Promise<Set<string>> {
-  const assignments = await ctx.db
+  const globalAssignments = await ctx.db
     .query("assignments")
-    .withIndex("by_subject", (q) => q.eq("subjectRef", subjectRef))
+    .withIndex("by_subject_scope", (q) =>
+      q.eq("subjectRef", subjectRef).eq("scopeRef", undefined),
+    )
     .collect();
+  const scopedAssignments =
+    scopeRef === undefined
+      ? []
+      : await ctx.db
+          .query("assignments")
+          .withIndex("by_subject_scope", (q) =>
+            q.eq("subjectRef", subjectRef).eq("scopeRef", scopeRef),
+          )
+          .collect();
   const names = new Set<string>();
-  for (const assignment of assignments) {
-    // Global (unscoped) assignments apply everywhere; scoped ones only in-scope.
-    if (assignment.scopeRef === undefined || assignment.scopeRef === scopeRef) {
-      names.add(assignment.role);
-    }
+  for (const assignment of [...globalAssignments, ...scopedAssignments]) {
+    names.add(assignment.role);
   }
   return names;
 }
@@ -31,10 +39,17 @@ async function grantsForRoleNames(
   if (roleNames.size === 0) {
     return [];
   }
-  const roles = await ctx.db.query("roles").collect();
+  const roles = await Promise.all(
+    [...roleNames].map((name) =>
+      ctx.db
+        .query("roles")
+        .withIndex("by_name", (q) => q.eq("name", name))
+        .unique(),
+    ),
+  );
   const grants: string[] = [];
   for (const role of roles) {
-    if (roleNames.has(role.name)) {
+    if (role !== null) {
       grants.push(...role.grants);
     }
   }

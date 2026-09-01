@@ -39,6 +39,18 @@ describe("roles", () => {
     expect(await t.mutation(api.example.removeRole, { name: "viewer" })).toBe(false);
   });
 
+  test("an assignment to a removed role confers no grants", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, { name: "viewer", grants: ["doc.read"] });
+    await t.mutation(api.example.assign, { subjectRef: "u1", role: "viewer" });
+    await t.mutation(api.example.removeRole, { name: "viewer" });
+
+    expect(await t.query(api.example.permissionsFor, { subjectRef: "u1" })).toEqual([]);
+    expect(
+      await t.query(api.example.check, { subjectRef: "u1", action: "doc.read" }),
+    ).toBe(false);
+  });
+
   test("rejects an invalid role name (boundary validation)", async () => {
     const t = setup();
     await expect(
@@ -118,6 +130,44 @@ describe("scoped (multi-tenant) roles", () => {
     expect(
       await t.query(api.example.check, { subjectRef: "u2", action: "doc.edit", scopeRef: "orgB" }),
     ).toBe(true);
+  });
+
+  test("scope reads combine global and matching roles without leaking other scopes", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, { name: "global", grants: ["profile.read"] });
+    await t.mutation(api.example.defineRole, { name: "alpha", grants: ["doc.edit"] });
+    await t.mutation(api.example.defineRole, { name: "beta", grants: ["billing.read"] });
+    await t.mutation(api.example.assign, { subjectRef: "u1", role: "global" });
+    await t.mutation(api.example.assign, {
+      subjectRef: "u1",
+      role: "alpha",
+      scopeRef: "orgA",
+    });
+    await t.mutation(api.example.assign, {
+      subjectRef: "u1",
+      role: "beta",
+      scopeRef: "orgB",
+    });
+
+    expect(
+      await t.query(api.example.rolesFor, { subjectRef: "u1", scopeRef: "orgA" }),
+    ).toEqual(["alpha", "global"]);
+    expect(
+      await t.query(api.example.permissionsFor, {
+        subjectRef: "u1",
+        scopeRef: "orgA",
+      }),
+    ).toEqual(["doc.edit", "profile.read"]);
+    expect(
+      await t.query(api.example.check, {
+        subjectRef: "u1",
+        action: "billing.read",
+        scopeRef: "orgA",
+      }),
+    ).toBe(false);
+    expect(await t.query(api.example.rolesFor, { subjectRef: "u1" })).toEqual([
+      "global",
+    ]);
   });
 });
 

@@ -23,7 +23,7 @@ export default defineSchema({
     scopeRef: v.optional(v.string()),
     createdAt: v.number(),
   })
-    .index("by_subject", ["subjectRef"])
+    .index("by_subject_scope", ["subjectRef", "scopeRef"])
     .index("by_role", ["role"])
     .index("by_subject_role_scope", ["subjectRef", "role", "scopeRef"]),
 });
