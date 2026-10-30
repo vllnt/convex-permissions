@@ -2,7 +2,7 @@
 
 > Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs
 
-`@vllnt/convex-permissions` is a publishable Convex component. It targets `convex@^1.36.1`.
+`@vllnt/convex-permissions` is a publishable Convex component. It targets `convex@^1.45.0`.
 
 It provides stored, runtime-editable role-based access control. The component owns two sandboxed
 tables — `roles` (a role name → its grants) and `assignments` (an opaque `subjectRef` → a role,
@@ -31,4 +31,3 @@ library, no domain model, no vendor — and runs identically on Convex Cloud and
 - [Security Policy](SECURITY.md): Vulnerability reporting policy
 - [Code of Conduct](CODE_OF_CONDUCT.md): Community participation guidelines
 - [License](LICENSE): MIT license
-- [Full source bundle](llms-full.txt): Aggregated README, changelog, API docs, and key source files

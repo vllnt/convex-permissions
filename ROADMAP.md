@@ -50,10 +50,10 @@
 ## release
 
 **Goal:** First publishable release at the vllnt baseline.
-**Exit criteria:** `@vllnt/convex-permissions` 0.1.0 published; `llms.txt` + `llms-full.txt`; CI green; `prepare-github-repository` verify passes; README design-stub banner dropped.
+**Exit criteria:** `@vllnt/convex-permissions` 0.1.0 published; maintained `llms.txt`; CI green; `prepare-github-repository` verify passes; README design-stub banner dropped.
 
 - [ ] release.1 Align tooling to conventions (`@vllnt/eslint-config/convex`, base tsconfig, vitest + `@edge-runtime/vm`)
-- [ ] release.2 `CHANGELOG.md` + `llms.txt` + `llms-full.txt`
+- [ ] release.2 `CHANGELOG.md` + maintained `llms.txt`
 - [ ] release.3 CI workflow + `prepare-github-repository` verify
 - [ ] release.4 Publish 0.1.0 to npm; update hub README + ROADMAP
 
