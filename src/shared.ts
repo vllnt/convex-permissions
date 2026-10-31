@@ -24,13 +24,25 @@ export function assertToken(label: string, value: string): void {
   }
 }
 
+/** Reject an empty grant: it carries no meaning and must never be stored. */
+export function assertGrant(value: string): void {
+  if (value.length === 0) {
+    throw new Error("grant must be a non-empty string");
+  }
+}
+
 /**
- * Does a single stored grant authorize an action?
+ * Does a single stored grant authorize an action? An empty action is never
+ * authorized (default-deny), not even by `"*"`.
+ *
  * - exact:  `"doc.edit"` authorizes `"doc.edit"`
  * - global: `"*"` authorizes everything
  * - prefix: `"doc.*"` authorizes `"doc.edit"`, `"doc.read"`, …
  */
 export function grantMatchesAction(grant: string, action: string): boolean {
+  if (action.length === 0) {
+    return false;
+  }
   if (grant === action || grant === "*") {
     return true;
   }

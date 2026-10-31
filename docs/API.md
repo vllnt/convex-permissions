@@ -30,6 +30,10 @@ Require a mutation `ctx`.
 | `assign(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if newly created (idempotent) |
 | `revoke(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if an assignment was removed  |
 
+`removeRole` deletes the role definition only: existing assignments stay and apply again if a
+role with the same name is defined later. Revoke the role from its holders first, or don't reuse
+the name.
+
 ## Queries
 
 Accept a query or mutation `ctx`.
@@ -53,8 +57,14 @@ Accept a query or mutation `ctx`.
 `require` throws
 `ConvexError<{ code: "FORBIDDEN"; subjectRef: string; action: string; scopeRef?: string }>`.
 
-Boundary validation throws a plain `Error` (not `ConvexError`) when a role name
-or subject ref does not match `^[A-Za-z0-9_.:-]{1,128}$`.
+Boundary validation throws a plain `Error` (not `ConvexError`) when:
+
+- a role name, `subjectRef`, or `assign` `scopeRef` does not match
+  `^[A-Za-z0-9_.:-]{1,128}$`;
+- a `defineRole` grant is an empty string (`grant must be a non-empty string`).
+
+`revoke` and the read queries never throw on malformed refs; they match exactly and
+return `false` / empty. `check` and `require` always deny an empty `action`.
 
 ## Grant matching
 
