@@ -147,6 +147,11 @@ Full reference: [docs/API.md](docs/API.md).
 - **The host owns auth** — a component cannot read `ctx.auth`. Resolve identity
   in the host, and call `defineRole` / `assign` / `revoke` only from mutations
   your own admin policy protects.
+- **Removing a role keeps its assignments** — `removeRole` deletes the
+  definition only. Existing assignments grant nothing while the role is absent,
+  but become active again if a role with the same name is defined later. Revoke
+  the role from its holders before removing it, or never reuse a removed role
+  name.
 
 See [docs/API.md](docs/API.md).
 

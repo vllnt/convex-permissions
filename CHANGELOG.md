@@ -18,7 +18,8 @@ All notable changes to this project are documented here. The format is based on
 
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main` with npm trusted
   publishing and provenance; actions are pinned to commit SHAs. `pnpm` 10 with a release-age gate.
-- Docs: `/test` setup for consuming apps, host-owned auth note, validation rules.
+- Docs: `/test` setup for consuming apps, host-owned auth note, validation rules, and that
+  `removeRole` keeps existing assignments (they apply again if the role name is reused).
 
 ## [0.1.0] - 2026-09-01
 

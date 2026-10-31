@@ -30,6 +30,10 @@ Require a mutation `ctx`.
 | `assign(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if newly created (idempotent) |
 | `revoke(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if an assignment was removed  |
 
+`removeRole` deletes the role definition only: existing assignments stay and apply again if a
+role with the same name is defined later. Revoke the role from its holders first, or don't reuse
+the name.
+
 ## Queries
 
 Accept a query or mutation `ctx`.
