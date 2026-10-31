@@ -43,7 +43,7 @@ await permissions.require(ctx, { subjectRef: userId, action: "doc.edit" }); // t
 npm install @vllnt/convex-permissions
 ```
 
-Requires `convex@^1.45.0`. The command installs `latest` (`0.1.0`); use
+Requires `convex@^1.45.0`. The command installs the latest stable release; use
 `@vllnt/convex-permissions@canary` for the current prerelease. Pin a resolved
 canary version for reproducible installs.
 
@@ -89,7 +89,8 @@ export const canEdit = query({
 ```
 
 Use one consistent identity-to-`subjectRef` mapping for assignments and checks.
-Role names and subject refs must match `^[A-Za-z0-9_.:-]{1,128}$`; this example
+Role names, subject refs, and the `scopeRef` passed to `assign` must match
+`^[A-Za-z0-9_.:-]{1,128}$`, and grants must be non-empty strings; this example
 assumes one identity provider with compatible subjects. Otherwise map identities
 to host-owned identifiers first.
 
@@ -140,8 +141,12 @@ Full reference: [docs/API.md](docs/API.md).
   authorization.
 - **Opaque refs only** — `subjectRef`, `scopeRef`, and action keys are arbitrary
   strings; tables are sandboxed (reached only via the client).
-- **Default-deny** — no matching grant ⇒ denied; boundary validation rejects
-  refs not matching `^[A-Za-z0-9_.:-]{1,128}$`.
+- **Default-deny** — no matching grant ⇒ denied (an empty action is always
+  denied); boundary validation rejects refs not matching
+  `^[A-Za-z0-9_.:-]{1,128}$` and empty grants.
+- **The host owns auth** — a component cannot read `ctx.auth`. Resolve identity
+  in the host, and call `defineRole` / `assign` / `revoke` only from mutations
+  your own admin policy protects.
 
 See [docs/API.md](docs/API.md).
 
@@ -154,6 +159,22 @@ pnpm test:coverage  # enforced 100% on covered files
 
 Tests run against the real component runtime via `convex-test`
 (`@edge-runtime/vm`), not mocks.
+
+### Testing your app
+
+`@vllnt/convex-permissions/test` exports `register(t, name = "permissions")` to
+mount the component in a `convex-test` instance. It needs `convex-test` and
+`vitest` (with Vite's `import.meta.glob`) in the consuming app:
+
+```ts
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { register } from "@vllnt/convex-permissions/test";
+import schema from "./schema";
+
+const t = convexTest(schema, import.meta.glob("./**/*.ts"));
+register(t);
+```
 
 ## Contributing
 

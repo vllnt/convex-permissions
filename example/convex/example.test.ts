@@ -203,3 +203,76 @@ describe("require", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("authorization hardening", () => {
+  test("defineRole rejects an empty grant (cannot widen via empty string)", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.read", ""] }),
+    ).rejects.toThrow(/grant must be a non-empty string/);
+    expect(await t.query(api.example.listRoles, {})).toEqual([]);
+  });
+
+  test("check denies an empty action, even for a global wildcard holder", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, { name: "admin", grants: ["*"] });
+    await t.mutation(api.example.assign, { subjectRef: "a", role: "admin" });
+    expect(await t.query(api.example.check, { subjectRef: "a", action: "" })).toBe(false);
+    expect(await t.query(api.example.check, { subjectRef: "a", action: "x" })).toBe(true);
+  });
+
+  test("assign rejects an empty or malformed scopeRef instead of creating a stray scope", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.edit"] });
+    for (const scopeRef of ["", "bad scope!"]) {
+      await expect(
+        t.mutation(api.example.assign, { subjectRef: "u1", role: "editor", scopeRef }),
+      ).rejects.toThrow(/scopeRef must match/);
+    }
+    expect(await t.query(api.example.rolesFor, { subjectRef: "u1", scopeRef: "" })).toEqual([]);
+  });
+
+  test("wildcards only widen by the documented forms", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, {
+      name: "odd",
+      grants: ["doc*", "*.read", "doc.*"],
+    });
+    await t.mutation(api.example.assign, { subjectRef: "u1", role: "odd" });
+    const allowed = async (action: string) =>
+      t.query(api.example.check, { subjectRef: "u1", action });
+    expect(await allowed("doc.edit")).toBe(true); // doc.*
+    expect(await allowed("docs.edit")).toBe(false); // not a prefix of "doc."
+    expect(await allowed("doc")).toBe(false);
+    expect(await allowed("img.read")).toBe(false); // "*.read" is literal
+    expect(await allowed("docx")).toBe(false); // "doc*" is literal
+  });
+
+  test("results never cross subjects or scopes; revoke matches exactly", async () => {
+    const t = setup();
+    await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.edit"] });
+    await t.mutation(api.example.assign, { subjectRef: "u1", role: "editor", scopeRef: "org" });
+    await t.mutation(api.example.assign, { subjectRef: "u1", role: "editor" });
+
+    const can = (subjectRef: string, scopeRef?: string) =>
+      t.query(api.example.check, { subjectRef, action: "doc.edit", scopeRef });
+    // Look-alike subjects and scopes are distinct.
+    expect(await can("u", "org")).toBe(false);
+    expect(await can("u10", "org")).toBe(false);
+    expect(await can("U1", "org")).toBe(false);
+    expect(await can("u1:x", "org")).toBe(false);
+
+    // Revoking the global row leaves the scoped one, and the reverse.
+    expect(await t.mutation(api.example.revoke, { subjectRef: "u1", role: "editor" })).toBe(true);
+    expect(await can("u1")).toBe(false);
+    expect(await can("u1", "org")).toBe(true);
+    expect(await can("u1", "org2")).toBe(false);
+    expect(
+      await t.mutation(api.example.revoke, { subjectRef: "u1", role: "editor", scopeRef: "org2" }),
+    ).toBe(false);
+    expect(
+      await t.mutation(api.example.revoke, { subjectRef: "u1", role: "editor", scopeRef: "org" }),
+    ).toBe(true);
+    expect(await can("u1", "org")).toBe(false);
+  });
+});

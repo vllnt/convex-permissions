@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server.js";
-import { assertToken } from "../shared.js";
+import { assertGrant, assertToken } from "../shared.js";
 
 /** Create or update a role definition (upsert by name). Idempotent. */
 export const defineRole = mutation({
@@ -12,6 +12,7 @@ export const defineRole = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     assertToken("role name", args.name);
+    args.grants.forEach(assertGrant);
     const existing = await ctx.db
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", args.name))
@@ -62,6 +63,9 @@ export const assign = mutation({
   handler: async (ctx, args) => {
     assertToken("subjectRef", args.subjectRef);
     assertToken("role", args.role);
+    if (args.scopeRef !== undefined) {
+      assertToken("scopeRef", args.scopeRef);
+    }
     const existing = await ctx.db
       .query("assignments")
       .withIndex("by_subject_role_scope", (q) =>
@@ -84,7 +88,11 @@ export const assign = mutation({
   },
 });
 
-/** Remove a role assignment. Returns true if an assignment was removed. */
+/**
+ * Remove a role assignment. Returns true if an assignment was removed. Refs are
+ * matched exactly and deliberately not validated, so rows stored before
+ * validation tightened can still be revoked.
+ */
 export const revoke = mutation({
   args: {
     subjectRef: v.string(),
