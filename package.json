@@ -1,10 +1,10 @@
 {
   "name": "@vllnt/convex-permissions",
   "version": "0.1.0",
-  "description": "Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs",
+  "description": "Role-based access control as a Convex component \u2014 typed, sandboxed, runtime-editable roles and grants keyed by opaque refs",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@10.34.8",
   "files": [
     "dist",
     "src"
@@ -45,9 +45,6 @@
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "generate:llms": "node scripts/generate-llms.mjs",
     "preversion": "pnpm install --frozen-lockfile && pnpm build && pnpm test:coverage && pnpm typecheck && pnpm generate:llms",
-    "prepublishOnly": "npm whoami || npm login",
-    "alpha": "npm version prerelease --preid alpha && npm publish --tag alpha && git push --follow-tags",
-    "release": "npm version patch && npm publish && git push --follow-tags",
     "check:agents": "node -e \"const f=require('node:fs');if(!f.existsSync('AGENTS.md')||f.existsSync('CLAUDE.md')||f.existsSync('.claude'))process.exit(1)\"",
     "codegen": "pnpm convex codegen --component-dir ./src/component"
   },
@@ -105,7 +102,15 @@
       "postcss": "8.5.31",
       "rolldown": "1.2.15",
       "source-map-js@<1.2.2": "1.2.2",
-      "zod@<4.6.6": "4.6.7"
-    }
+      "zod@<4.6.6": "4.6.7",
+      "deepmerge-ts@<8.0.0": "8.0.2"
+    },
+    "minimumReleaseAge": 10080,
+    "minimumReleaseAgeExclude": [
+      "@vllnt/*"
+    ],
+    "ignoredBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
