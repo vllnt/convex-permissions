@@ -276,3 +276,31 @@ describe("authorization hardening", () => {
     expect(await can("u1", "org")).toBe(false);
   });
 });
+
+describe("input limits", () => {
+  test("defineRole rejects oversized grants, grant lists and descriptions", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.defineRole, { name: "r", grants: ["a".repeat(257)] }),
+    ).rejects.toThrow(/grant must be at most 256 characters/);
+    await expect(
+      t.mutation(api.example.defineRole, {
+        name: "r",
+        grants: Array.from({ length: 257 }, (_, i) => `g${String(i)}`),
+      }),
+    ).rejects.toThrow(/at most 256 grants/);
+    await expect(
+      t.mutation(api.example.defineRole, {
+        name: "r",
+        grants: ["doc.read"],
+        description: "d".repeat(1025),
+      }),
+    ).rejects.toThrow(/description must be at most 1024 characters/);
+    await t.mutation(api.example.defineRole, {
+      name: "r",
+      grants: Array.from({ length: 256 }, (_, i) => `g${String(i)}`.padEnd(256, "x")),
+      description: "d".repeat(1024),
+    });
+    expect(await t.query(api.example.listRoles, {})).toHaveLength(1);
+  });
+});

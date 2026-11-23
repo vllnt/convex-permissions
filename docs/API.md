@@ -61,7 +61,13 @@ Boundary validation throws a plain `Error` (not `ConvexError`) when:
 
 - a role name, `subjectRef`, or `assign` `scopeRef` does not match
   `^[A-Za-z0-9_.:-]{1,128}$`;
-- a `defineRole` grant is an empty string (`grant must be a non-empty string`).
+- a `defineRole` grant is an empty string (`grant must be a non-empty string`) or longer
+  than 256 characters;
+- a `defineRole` call has more than 256 grants or a description longer than 1024 characters.
+
+Updating a role stored before these limits is allowed as long as it does not grow past what
+is stored: its grant count and description length may stay or shrink, and its existing long
+grants may be kept but not duplicated.
 
 `revoke` and the read queries never throw on malformed refs; they match exactly and
 return `false` / empty. `check` and `require` always deny an empty `action`.
