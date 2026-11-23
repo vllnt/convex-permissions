@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { register } from "../../src/test";
@@ -274,5 +274,79 @@ describe("authorization hardening", () => {
       await t.mutation(api.example.revoke, { subjectRef: "u1", role: "editor", scopeRef: "org" }),
     ).toBe(true);
     expect(await can("u1", "org")).toBe(false);
+  });
+});
+
+describe("cost and input limits", () => {
+  test("re-defining an unchanged role writes nothing; a real change patches", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup();
+      vi.setSystemTime(1_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.read", "doc.edit"],
+        description: "Editors",
+      });
+      vi.setSystemTime(2_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.read", "doc.edit"],
+        description: "Editors",
+      });
+      let roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(1_000);
+
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.edit", "doc.read"],
+        description: "Editors",
+      });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(2_000);
+      expect(roles[0].grants).toEqual(["doc.edit", "doc.read"]);
+
+      vi.setSystemTime(3_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.edit", "doc.read"],
+      });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(3_000);
+      expect(roles[0].description).toBeUndefined();
+
+      vi.setSystemTime(4_000);
+      await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.edit"] });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(4_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test("defineRole rejects oversized grants, grant lists and descriptions", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.defineRole, { name: "r", grants: ["a".repeat(257)] }),
+    ).rejects.toThrow(/grant must be at most 256 characters/);
+    await expect(
+      t.mutation(api.example.defineRole, {
+        name: "r",
+        grants: Array.from({ length: 257 }, (_, i) => `g${String(i)}`),
+      }),
+    ).rejects.toThrow(/at most 256 grants/);
+    await expect(
+      t.mutation(api.example.defineRole, {
+        name: "r",
+        grants: ["doc.read"],
+        description: "d".repeat(1025),
+      }),
+    ).rejects.toThrow(/description must be at most 1024 characters/);
+    await t.mutation(api.example.defineRole, {
+      name: "r",
+      grants: Array.from({ length: 256 }, (_, i) => `g${String(i)}`.padEnd(256, "x")),
+      description: "d".repeat(1024),
+    });
+    expect(await t.query(api.example.listRoles, {})).toHaveLength(1);
   });
 });

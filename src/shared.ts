@@ -24,11 +24,32 @@ export function assertToken(label: string, value: string): void {
   }
 }
 
+export const MAX_GRANT_LENGTH = 256;
+export const MAX_GRANTS_PER_ROLE = 256;
+export const MAX_DESCRIPTION_LENGTH = 1024;
+
 /** Reject an empty grant: it carries no meaning and must never be stored. */
 export function assertGrant(value: string): void {
   if (value.length === 0) {
     throw new Error("grant must be a non-empty string");
   }
+  if (value.length > MAX_GRANT_LENGTH) {
+    throw new Error(`grant must be at most ${String(MAX_GRANT_LENGTH)} characters`);
+  }
+}
+
+export function assertRoleInput(grants: readonly string[], description: string | undefined): void {
+  if (grants.length > MAX_GRANTS_PER_ROLE) {
+    throw new Error(`a role may have at most ${String(MAX_GRANTS_PER_ROLE)} grants`);
+  }
+  grants.forEach(assertGrant);
+  if (description !== undefined && description.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(`description must be at most ${String(MAX_DESCRIPTION_LENGTH)} characters`);
+  }
+}
+
+export function sameGrants(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((grant, index) => grant === b[index]);
 }
 
 /**
