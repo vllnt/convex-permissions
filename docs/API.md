@@ -61,13 +61,7 @@ Boundary validation throws a plain `Error` (not `ConvexError`) when:
 
 - a role name, `subjectRef`, or `assign` `scopeRef` does not match
   `^[A-Za-z0-9_.:-]{1,128}$`;
-- a `defineRole` grant is an empty string (`grant must be a non-empty string`) or longer
-  than 256 characters;
-- a `defineRole` call has more than 256 grants or a description longer than 1024 characters.
-
-Updating a role stored before these limits is allowed as long as it does not grow past what
-is stored: its grant count and description length may stay or shrink, and its existing long
-grants may be kept.
+- a `defineRole` grant is an empty string (`grant must be a non-empty string`).
 
 `defineRole` with the same grants (same order) and description as the stored role writes
 nothing, so it does not bump `updatedAt` or re-run subscribed `check` queries.

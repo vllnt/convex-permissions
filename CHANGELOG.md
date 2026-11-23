@@ -11,12 +11,6 @@ All notable changes to this project are documented here. The format is based on
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
   bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.
 
-### Fixed
-
-- `defineRole` caps input size: at most 256 grants per role, 256 characters per grant, and
-  1024 characters of description. Roles stored before the caps can still be updated as long as
-  they do not grow.
-
 ## [0.1.1] - Unreleased
 
 ### Fixed

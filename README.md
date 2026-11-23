@@ -90,8 +90,7 @@ export const canEdit = query({
 
 Use one consistent identity-to-`subjectRef` mapping for assignments and checks.
 Role names, subject refs, and the `scopeRef` passed to `assign` must match
-`^[A-Za-z0-9_.:-]{1,128}$`, and grants must be non-empty strings of at most 256
-characters (at most 256 per role, description at most 1024 characters); this example
+`^[A-Za-z0-9_.:-]{1,128}$`, and grants must be non-empty strings; this example
 assumes one identity provider with compatible subjects. Otherwise map identities
 to host-owned identifiers first.
 
