@@ -33,17 +33,33 @@ export function assertGrant(value: string): void {
   if (value.length === 0) {
     throw new Error("grant must be a non-empty string");
   }
-  if (value.length > MAX_GRANT_LENGTH) {
-    throw new Error(`grant must be at most ${String(MAX_GRANT_LENGTH)} characters`);
-  }
 }
 
-export function assertRoleInput(grants: readonly string[], description: string | undefined): void {
-  if (grants.length > MAX_GRANTS_PER_ROLE) {
+export interface StoredRole {
+  grants: readonly string[];
+  description?: string;
+}
+
+export function assertRoleInput(
+  grants: readonly string[],
+  description: string | undefined,
+  stored: StoredRole | null,
+): void {
+  grants.forEach(assertGrant);
+  const storedGrants = stored?.grants ?? [];
+  if (grants.length > Math.max(MAX_GRANTS_PER_ROLE, storedGrants.length)) {
     throw new Error(`a role may have at most ${String(MAX_GRANTS_PER_ROLE)} grants`);
   }
-  grants.forEach(assertGrant);
-  if (description !== undefined && description.length > MAX_DESCRIPTION_LENGTH) {
+  for (const grant of grants) {
+    if (grant.length > MAX_GRANT_LENGTH && !storedGrants.includes(grant)) {
+      throw new Error(`grant must be at most ${String(MAX_GRANT_LENGTH)} characters`);
+    }
+  }
+  const storedDescriptionLength = stored?.description?.length ?? 0;
+  if (
+    description !== undefined &&
+    description.length > Math.max(MAX_DESCRIPTION_LENGTH, storedDescriptionLength)
+  ) {
     throw new Error(`description must be at most ${String(MAX_DESCRIPTION_LENGTH)} characters`);
   }
 }

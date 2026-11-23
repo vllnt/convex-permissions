@@ -14,7 +14,8 @@ All notable changes to this project are documented here. The format is based on
 ### Fixed
 
 - `defineRole` caps input size: at most 256 grants per role, 256 characters per grant, and
-  1024 characters of description.
+  1024 characters of description. Roles stored before the caps can still be updated as long as
+  they do not grow.
 
 ## [0.1.1] - Unreleased
 

@@ -12,11 +12,11 @@ export const defineRole = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     assertToken("role name", args.name);
-    assertRoleInput(args.grants, args.description);
     const existing = await ctx.db
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", args.name))
       .unique();
+    assertRoleInput(args.grants, args.description, existing);
     if (existing !== null) {
       if (
         existing.description === args.description &&
