@@ -31,6 +31,10 @@ export function assertGrant(value: string): void {
   }
 }
 
+export function sameGrants(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((grant, index) => grant === b[index]);
+}
+
 /**
  * Does a single stored grant authorize an action? An empty action is never
  * authorized (default-deny), not even by `"*"`.

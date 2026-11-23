@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
 import { register } from "../../src/test";
@@ -275,4 +275,53 @@ describe("authorization hardening", () => {
     ).toBe(true);
     expect(await can("u1", "org")).toBe(false);
   });
+});
+
+describe("cost", () => {
+  test("re-defining an unchanged role writes nothing; a real change patches", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup();
+      vi.setSystemTime(1_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.read", "doc.edit"],
+        description: "Editors",
+      });
+      vi.setSystemTime(2_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.read", "doc.edit"],
+        description: "Editors",
+      });
+      let roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(1_000);
+
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.edit", "doc.read"],
+        description: "Editors",
+      });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(2_000);
+      expect(roles[0].grants).toEqual(["doc.edit", "doc.read"]);
+
+      vi.setSystemTime(3_000);
+      await t.mutation(api.example.defineRole, {
+        name: "editor",
+        grants: ["doc.edit", "doc.read"],
+      });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(3_000);
+      expect(roles[0].description).toBeUndefined();
+
+      vi.setSystemTime(4_000);
+      await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.edit"] });
+      roles = await t.query(api.example.listRoles, {});
+      expect(roles[0].updatedAt).toBe(4_000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
 });
