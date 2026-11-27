@@ -14,10 +14,9 @@ const REQUIRED = [
 ];
 const FORBIDDEN = [
   /^AGENTS\.md$/,
-  /^CLAUDE\.md$/,
   /^ROADMAP\.md$/,
   /^CONTRIBUTING\.md$/,
-  /^(example|scripts|\.github)\//,
+  /^(example|scripts|tests?|specs?|\.github)\//,
   /\.(test|spec)\.[cm]?[jt]sx?$/,
 ];
 const REPO_BLOB = /^https:\/\/github\.com\/vllnt\/convex-permissions\/blob\/[^/]+\/(.+)$/;

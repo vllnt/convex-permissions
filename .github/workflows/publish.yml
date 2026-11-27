@@ -17,7 +17,7 @@ on:
       - "README.md"
       - "CHANGELOG.md"
       - "llms.txt"
-      - "docs/API.md"
+      - "docs/*.md"
       - ".github/workflows/publish.yml"
   workflow_dispatch:
 

@@ -8,7 +8,7 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
-- The npm package now ships `docs/API.md`, `CHANGELOG.md`, and `llms.txt`, so coding agents
+- The npm package now ships `docs/*.md`, `CHANGELOG.md`, and `llms.txt`, so coding agents
   can read docs that match the installed version under `node_modules/@vllnt/convex-permissions/`.
   `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
   from the tarball or a contributor-only file would ship.

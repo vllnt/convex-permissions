@@ -25,10 +25,14 @@ type Action = "doc.read" | "doc.edit" | "doc.delete";
 const permissions = new Permissions<Role, Action>(components.permissions);
 ```
 
-`TRole` and `TAction` default to `string`. Every method takes the host `ctx` first.
-The mutating methods (`defineRole`, `removeRole`, `assign`, `revoke`) need a `ctx` with
-`runMutation` (mutation or action); the read methods (`check`, `require`, `rolesFor`,
-`permissionsFor`, `listRoles`) need a `ctx` with `runQuery` (query, mutation, or action).
+`TRole` and `TAction` default to `string`. `assign`, `revoke`, `removeRole`, `check`, and
+`require` are typed against them; `defineRole` grants accept any string and are not checked
+against `TAction`.
+
+Every method takes the host `ctx` first. The mutating methods (`defineRole`, `removeRole`,
+`assign`, `revoke`) need a `ctx` with `runMutation` (mutation or action); the read methods
+(`check`, `require`, `rolesFor`, `permissionsFor`, `listRoles`) need a `ctx` with `runQuery`
+(query, mutation, or action).
 
 ## Mutations
 
