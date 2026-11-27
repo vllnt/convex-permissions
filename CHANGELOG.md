@@ -6,7 +6,20 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- The npm package now ships `docs/*.md`, `CHANGELOG.md`, and `llms.txt`, so coding agents
+  can read docs that match the installed version under `node_modules/@vllnt/convex-permissions/`.
+  `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
+  from the tarball or a contributor-only file would ship.
+
 ### Changed
+
+- `homepage` points to https://oss.vllnt.com/packages/convex-permissions.
+- Release workflow: every push to `main` that touches the package or its shipped docs publishes
+  a canary (`@canary` dist-tag only); the repository-variable gate is removed.
+- Docs: `docs/API.md` lists the package entry points, notes that action `ctx` works, and that
+  `assign` does not require the role to be defined.
 
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
   bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.

@@ -47,6 +47,13 @@ Requires `convex@^1.45.0`. The command installs the latest stable release; use
 `@vllnt/convex-permissions@canary` for the current prerelease. Pin a resolved
 canary version for reproducible installs.
 
+### For coding agents
+
+The package bundles its docs at `node_modules/@vllnt/convex-permissions/`:
+`README.md`, `docs/API.md`, `CHANGELOG.md`, `llms.txt`, and the TypeScript
+source in `src/`. They match the installed version. Read them before writing
+code that uses this package.
+
 ## Usage
 
 ```ts
@@ -181,9 +188,23 @@ const t = convexTest(schema, import.meta.glob("./**/*.ts"));
 register(t);
 ```
 
+## Related packages
+
+- [`@vllnt/convex-memberships`](https://www.npmjs.com/package/@vllnt/convex-memberships)
+  — who belongs to what (flat `(member, resource, relation)` tuples). Use it to
+  record membership and relationships; use this package to decide whether a
+  subject may perform an action.
+- [`@vllnt/convex-invitations`](https://www.npmjs.com/package/@vllnt/convex-invitations)
+  — single-use, expiring invites. `accept` returns the grant; the host can
+  apply it with `assign` here.
+- [`@vllnt/convex-api-keys`](https://www.npmjs.com/package/@vllnt/convex-api-keys)
+  — create, validate, rotate, and revoke API keys. Use it to authenticate
+  machine callers, then pass the resolved owner as `subjectRef` to `check` or
+  `require`.
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md).
 
 ## Author
 
@@ -198,3 +219,7 @@ If this is useful, [sponsor the work](https://github.com/sponsors/bntvllnt).
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+Part of vllnt oss: [https://oss.vllnt.com](https://oss.vllnt.com)

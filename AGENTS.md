@@ -33,7 +33,7 @@ access to the selected Convex project.
 
 - `src/client/index.ts` — `Permissions<TRole, TAction>` class (consumer API): defineRole,
   removeRole, assign, revoke, check, require, rolesFor, permissionsFor, listRoles
-- `src/client/types.ts` — public TypeScript interfaces (`RoleDoc`, `PermissionDenied`)
+- `src/client/types.ts` — public `RoleDoc` interface (`PermissionDenied` lives in `index.ts`)
 - `src/component/mutations.ts` — Convex mutations (defineRole, removeRole, assign, revoke)
 - `src/component/queries.ts` — Convex queries (check, require, rolesFor, permissionsFor, listRoles)
 - `src/component/validators.ts` — shared validators
@@ -41,6 +41,9 @@ access to the selected Convex project.
 - `src/component/convex.config.ts` — `defineComponent("permissions")`
 - `src/shared.ts` — shared types, pure grant-matching logic
 - `src/test.ts` — convex-test helper for registering the component
+- `docs/*.md`, `CHANGELOG.md`, `llms.txt`, `README.md` — ship in the npm tarball for
+  consumers and their agents; `pnpm check:package` (part of `pnpm lint`) enforces the file list
+  and that every shipped `docs/*.md` is linked from `llms.txt`
 
 ## Ownership boundary
 
