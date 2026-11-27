@@ -37,7 +37,16 @@ for (const path of packed) {
     errors.push(`must not ship: ${path} (exclude it from package.json "files")`);
   }
 }
-for (const [, target] of readFileSync("llms.txt", "utf8").matchAll(/\]\(([^)\s]+)\)/g)) {
+const llmsTargets = [...readFileSync("llms.txt", "utf8").matchAll(/\]\(([^)\s]+)\)/g)].map(
+  ([, target]) => target,
+);
+// Every shipped docs page is listed in llms.txt, so an internal note in docs/ cannot ship unnoticed.
+for (const path of packed) {
+  if (path.startsWith("docs/") && !llmsTargets.includes(`./${path}`)) {
+    errors.push(`${path} ships but llms.txt does not link ./${path}; link it or move it out of docs/`);
+  }
+}
+for (const target of llmsTargets) {
   const blob = REPO_BLOB.exec(target);
   if (blob && packed.has(blob[1])) {
     errors.push(`llms.txt: ${target} ships in the tarball; link it as ./${blob[1]}`);

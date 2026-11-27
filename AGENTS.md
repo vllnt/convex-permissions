@@ -42,7 +42,8 @@ access to the selected Convex project.
 - `src/shared.ts` — shared types, pure grant-matching logic
 - `src/test.ts` — convex-test helper for registering the component
 - `docs/*.md`, `CHANGELOG.md`, `llms.txt`, `README.md` — ship in the npm tarball for
-  consumers and their agents (keep internal notes out of `docs/`); `pnpm check:package` (part of `pnpm lint`) enforces the file list
+  consumers and their agents; `pnpm check:package` (part of `pnpm lint`) enforces the file list
+  and that every shipped `docs/*.md` is linked from `llms.txt`
 
 ## Ownership boundary
 
