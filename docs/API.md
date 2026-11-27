@@ -2,6 +2,17 @@
 
 **Compatibility:** `convex@^1.45.0`
 
+## Entry points
+
+| Import                                           | Exports                                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `@vllnt/convex-permissions`                      | `Permissions` class; types `PermissionsComponent`, `PermissionDenied`, `RoleDoc`     |
+| `@vllnt/convex-permissions/convex.config`        | Default export: the component definition for `app.use(...)`                            |
+| `@vllnt/convex-permissions/test`                 | `register(t, name = "permissions")` for `convex-test` (TypeScript source, see README) |
+| `@vllnt/convex-permissions/_generated/component` | Type `ComponentApi` (types only)                                                       |
+
+`/convex.config.js` and `/_generated/component.js` resolve to the same files.
+
 The public surface is the `Permissions` client class (`src/client/index.ts`),
 generic over the host's role and action unions:
 
@@ -14,14 +25,14 @@ type Action = "doc.read" | "doc.edit" | "doc.delete";
 const permissions = new Permissions<Role, Action>(components.permissions);
 ```
 
-Every method takes the host `ctx` first. The mutating methods (`defineRole`,
-`removeRole`, `assign`, `revoke`) need a mutation `ctx`; the read methods
-(`check`, `require`, `rolesFor`, `permissionsFor`, `listRoles`) need a query (or
-mutation) `ctx`.
+`TRole` and `TAction` default to `string`. Every method takes the host `ctx` first.
+The mutating methods (`defineRole`, `removeRole`, `assign`, `revoke`) need a `ctx` with
+`runMutation` (mutation or action); the read methods (`check`, `require`, `rolesFor`,
+`permissionsFor`, `listRoles`) need a `ctx` with `runQuery` (query, mutation, or action).
 
 ## Mutations
 
-Require a mutation `ctx`.
+Require a mutation or action `ctx`.
 
 | Method                                            | Args                     | Returns            | Notes                                |
 | ------------------------------------------------- | ------------------------ | ------------------ | ------------------------------------ |
@@ -34,15 +45,18 @@ Require a mutation `ctx`.
 role with the same name is defined later. Revoke the role from its holders first, or don't reuse
 the name.
 
+`assign` does not check that the role is defined. An assignment to an undefined role grants
+nothing until a role with that name is defined, and `rolesFor` still lists it.
+
 ## Queries
 
-Accept a query or mutation `ctx`.
+Accept a query, mutation, or action `ctx`.
 
 | Method                                            | Args                       | Returns              | Notes                                          |
 | ------------------------------------------------- | -------------------------- | -------------------- | ---------------------------------------------- |
 | `check(ctx, { subjectRef, action, scopeRef? })`   | subject + action (+ scope) | `Promise<boolean>`   | Default-deny                                   |
 | `require(ctx, { subjectRef, action, scopeRef? })` | subject + action (+ scope) | `Promise<void>`      | Throws `ConvexError<PermissionDenied>` on deny |
-| `rolesFor(ctx, { subjectRef, scopeRef? })`        | subject (+ scope)          | `Promise<string[]>`  | Role names, sorted                             |
+| `rolesFor(ctx, { subjectRef, scopeRef? })`        | subject (+ scope)          | `Promise<string[]>`  | Assigned role names, sorted                    |
 | `permissionsFor(ctx, { subjectRef, scopeRef? })`  | subject (+ scope)          | `Promise<string[]>`  | Distinct grants, sorted                        |
 | `listRoles(ctx)`                                  | —                          | `Promise<RoleDoc[]>` | All role definitions                           |
 
@@ -59,14 +73,14 @@ Accept a query or mutation `ctx`.
 
 Boundary validation throws a plain `Error` (not `ConvexError`) when:
 
-- a role name, `subjectRef`, or `assign` `scopeRef` does not match
+- a `defineRole` `name`, or an `assign` `subjectRef`, `role`, or `scopeRef`, does not match
   `^[A-Za-z0-9_.:-]{1,128}$`;
 - a `defineRole` grant is an empty string (`grant must be a non-empty string`).
 
 `defineRole` with the same grants (same order) and description as the stored role writes
 nothing, so it does not bump `updatedAt` or re-run subscribed `check` queries.
 
-`revoke` and the read queries never throw on malformed refs; they match exactly and
+`removeRole`, `revoke`, and the read queries never throw on malformed refs; they match exactly and
 return `false` / empty. `check` and `require` always deny an empty `action`.
 
 ## Grant matching

@@ -13,21 +13,31 @@ exact, prefix-wildcard (`doc.*`), and global (`*`) matching; checks are default-
 throws `ConvexError<PermissionDenied>`. The component is agnostic on every axis — opaque refs, no auth
 library, no domain model, no vendor — and runs identically on Convex Cloud and self-hosted backends.
 
+## For coding agents
+
+The npm package bundles these docs at `node_modules/@vllnt/convex-permissions/`: this file,
+`README.md`, `docs/API.md`, `CHANGELOG.md`, and the TypeScript source in `src/`. They match the
+installed version. Read them before writing code that uses this package.
+
 ## Docs
 
-- [README](README.md): Project overview, installation, usage examples, architecture
-- [API Reference](docs/API.md): Public class methods, return shapes, input validation
-- [Changelog](CHANGELOG.md): Version history and release notes
-- [Contributing](CONTRIBUTING.md): Development setup, validation commands, release workflow
+- [README](./README.md): Project overview, installation, usage examples, security model
+- [API Reference](./docs/API.md): Entry points, client methods, return shapes, input validation
+- [Changelog](./CHANGELOG.md): Version history and release notes
+- [Contributing](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow (repository only)
 
 ## Examples
 
-- [Example component wrapper](example/convex/example.ts): Host-app wrapper functions
-- [Example tests](example/convex/example.test.ts): End-to-end usage coverage with `convex-test`
+- [Example component wrapper](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.ts): Host-app wrapper functions (repository only)
+- [Example tests](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.test.ts): End-to-end usage coverage with `convex-test` (repository only)
 
 ## Optional
 
-- [AGENTS](AGENTS.md): Canonical agent instructions for this repository
-- [Security Policy](SECURITY.md): Vulnerability reporting policy
-- [Code of Conduct](CODE_OF_CONDUCT.md): Community participation guidelines
-- [License](LICENSE): MIT license
+- [License](./LICENSE): MIT license
+- [Security Policy](https://github.com/vllnt/convex-permissions/blob/main/SECURITY.md): Vulnerability reporting policy
+- [Code of Conduct](https://github.com/vllnt/convex-permissions/blob/main/CODE_OF_CONDUCT.md): Community participation guidelines
+- [AGENTS](https://github.com/vllnt/convex-permissions/blob/main/AGENTS.md): Instructions for agents working on this repository (repository only)
+
+## Ecosystem
+
+- [vllnt oss](https://oss.vllnt.com/llms.txt): Index of the @vllnt packages
