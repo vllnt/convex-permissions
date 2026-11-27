@@ -41,8 +41,9 @@ const llmsTargets = [...readFileSync("llms.txt", "utf8").matchAll(/\]\(([^)\s]+)
   ([, target]) => target,
 );
 // Every shipped docs page is listed in llms.txt, so an internal note in docs/ cannot ship unnoticed.
+const linked = new Set(llmsTargets.map((target) => target.split("#")[0]));
 for (const path of packed) {
-  if (path.startsWith("docs/") && !llmsTargets.includes(`./${path}`)) {
+  if (path.startsWith("docs/") && !linked.has(`./${path}`)) {
     errors.push(`${path} ships but llms.txt does not link ./${path}; link it or move it out of docs/`);
   }
 }
