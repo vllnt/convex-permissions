@@ -58,7 +58,8 @@ access to the selected Convex project.
 - `roles` table — role name → grants array, optional description, updatedAt timestamp
 - `assignments` table — subjectRef → role, optional scopeRef, createdAt timestamp
 - Grant-matching logic (exact, prefix-wildcard `doc.*`, global `*`)
-- Input validation at the mutation boundary (`^[A-Za-z0-9_.:-]{1,128}$`)
+- Input validation at the mutation boundary (`^[A-Za-z0-9_.:-]{1,128}$`; role size limits:
+  256 grants, 256-character grants, 1024-character description, in UTF-16 code units)
 
 **Host owns:**
 

@@ -22,7 +22,7 @@ These docs ship in `node_modules/@vllnt/convex-permissions/` and match the insta
 - [README](./README.md): Install, quick start, API table, common tasks, limits
 - [API reference](./docs/API.md): Every export with signatures, defaults, return shapes, validation
 - [Errors and fixes](./README.md#errors-and-fixes): Every thrown error with its cause and fix
-- [Limits and gotchas](./README.md#limits-and-gotchas): Token pattern, default-deny, scope rules, silent no-ops
+- [Limits and gotchas](./README.md#limits-and-gotchas): Token pattern, role size limits, default-deny, scope rules, silent no-ops
 - [Changelog](./CHANGELOG.md): Version history and release notes
 - [Contributing](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow (repository only)
 

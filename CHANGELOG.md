@@ -25,6 +25,17 @@ All notable changes to this project are documented here. The format is based on
   stray scope. Scope refs 0.1.0 accepted, such as `""` or `"org/1"`, now throw. `revoke` still
   matches refs exactly and never validates, so previously stored rows can be removed.
 - **Breaking:** `defineRole` rejects empty-string grants (`grant must be a non-empty string`).
+- **Breaking:** `defineRole` caps role size: at most 256 grants per role, 256 characters per
+  grant, and 1024 characters of description, counted as JavaScript string length (UTF-16 code
+  units: `"é"` counts 1, most emoji count 2). Larger inputs now throw
+  `a role may have at most 256 grants`, `grant must be at most 256 characters`, or
+  `description must be at most 1024 characters`. Before upgrading, trim roles over these limits
+  (find them with `listRoles`). Roles already stored over the limits stay readable by every
+  query, and `defineRole` can still update them as long as the grant count and description
+  length each stay within the larger of the limit and the stored value, and the update adds no
+  new grant over 256 characters (a stored one may be kept, at most as many times). Each limit is
+  checked on its own, and grants of 256 characters or fewer are always accepted, so such an
+  update can still raise the role's total size.
 - **Breaking:** `engines.node` is `>=20`: the lowest supported peer, `convex@1.45.0`, requires
   Node.js 20.
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
