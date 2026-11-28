@@ -42,11 +42,13 @@ All notable changes to this project are documented here. The format is based on
   contention.
 - npm metadata: `homepage` is https://oss.vllnt.com/packages/convex-permissions, the
   `description` is the same sentence as in `README.md` and `llms.txt`, and `keywords` add
-  `typescript` and `role-based-access-control`.
+  `typescript`, `rbac`, `role-based-access-control`, `roles`, `authorization`,
+  `access-control`, and `multi-tenant`.
 - Docs: the README is restructured for coding agents (When to use, Quick start, an API table
   linking every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
   Compatibility) and drops the Related packages list; `docs/API.md` documents every export,
-  validation rule, and thrown error; the client has TSDoc on every method. No runtime change.
+  validation rule, and thrown error; the client has TSDoc on every method; `llms-full.txt` is
+  removed and `llms.txt` links the shipped docs instead. No runtime change.
 - Releases: a stable version publishes only from a `vX.Y.Z` tag on `main`, and every merge to
   `main` publishes a `@canary` build; both use npm trusted publishing with provenance.
 - Internal: CI and the publish workflow (pinned actions, pnpm 10 through Corepack with a
@@ -60,7 +62,8 @@ All notable changes to this project are documented here. The format is based on
   TS2345. No runtime change.
 - `scopeRef` and `description` accept `undefined` under `exactOptionalPropertyTypes`, so a
   `string | undefined` variable type-checks; `undefined` behaves like an omitted field. No
-  runtime change.
+  runtime change. `PermissionDenied.scopeRef` is typed `string | undefined`, matching the data
+  `require` throws for an unscoped call inside the host function.
 
 ## [0.1.0] - 2026-09-01
 
