@@ -111,7 +111,9 @@ export class Permissions<
     return ctx.runMutation(this.component.mutations.defineRole, {
       name: role.name,
       grants: [...role.grants],
-      description: role.description,
+      ...(role.description === undefined
+        ? {}
+        : { description: role.description }),
     });
   }
 
