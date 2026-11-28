@@ -42,10 +42,10 @@ All notable changes to this project are documented here. The format is based on
 - TSDoc on the client entry, its methods (thrown errors, no-op and scope rules), and the
   `convex.config` default export. No runtime change.
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push
-  to `main` that touches the package or its shipped docs publishes a canary (`@canary` dist-tag
-  only), both with npm trusted publishing and provenance; actions are pinned to commit SHAs.
-  The quality gates both jobs need smoke-test the packed tarball (imports and a strict consumer
-  type-check) before anything publishes. `pnpm` 10 with a release-age gate.
+  to `main` publishes a canary (`@canary` dist-tag only), both with npm trusted publishing and
+  provenance; actions are pinned to commit SHAs. The quality gates both jobs need smoke-test
+  the packed tarball (imports and a strict consumer type-check) before anything publishes.
+  `pnpm` 10 with a release-age gate.
 - Docs: `/test` setup for consuming apps, host-owned auth note, validation rules, the package
   entry points, that action `ctx` works, that `assign` does not require the role to be defined,
   and that `removeRole` keeps existing assignments (they apply again if the role name is reused).
