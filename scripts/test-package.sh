@@ -40,6 +40,11 @@ npm pack --ignore-scripts --silent --pack-destination "$tmp" > "$tmp/pack-name.t
 tarball="$tmp/$(tail -n 1 "$tmp/pack-name.txt")"
 [[ -f "$tarball" ]] || { echo "error: npm pack produced no tarball" >&2; exit 1; }
 
+# Resolved from the repo so the consumer reuses its store; when the temp dir sits on
+# another filesystem (e.g. a tmpfs /tmp), pnpm would otherwise create a new store
+# there that the trap below never removes.
+STORE_DIR="$(pnpm store path)"
+
 consumer="$tmp/consumer"
 mkdir -p "$consumer"
 cd "$consumer"
@@ -47,11 +52,13 @@ cd "$consumer"
 cat > package.json <<'EOF'
 { "name": "package-smoke-consumer", "private": true, "type": "module" }
 EOF
-# The copied settings file makes the consumer its own pnpm project root and holds its
-# install to the repo's release-age gate (pnpm 10 reads that gate only from this file).
+# Carries the repo's release-age gate and its @vllnt/* exclusion into the consumer: a
+# parent pnpm run passes only the age through the environment, not the exclusion, and
+# running this script directly with bash passes neither. It also makes the consumer
+# its own pnpm project root.
 cp "$ROOT/pnpm-workspace.yaml" pnpm-workspace.yaml
 
-pnpm add --ignore-scripts --prefer-offline --loglevel=error \
+pnpm add --ignore-scripts --prefer-offline --loglevel=error --store-dir "$STORE_DIR" \
   "$tarball" \
   "convex@$CONVEX_VERSION" \
   "convex-test@$CONVEX_TEST_VERSION" \
