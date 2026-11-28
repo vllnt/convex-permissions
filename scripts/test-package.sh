@@ -91,7 +91,10 @@ import component from "@vllnt/convex-permissions/convex.config";
 import componentJs from "@vllnt/convex-permissions/convex.config.js";
 import type { ComponentApi } from "@vllnt/convex-permissions/_generated/component";
 import type { ComponentApi as ComponentApiJs } from "@vllnt/convex-permissions/_generated/component.js";
-import type { register } from "@vllnt/convex-permissions/test";
+import { register } from "@vllnt/convex-permissions/test";
+import { convexTest } from "convex-test";
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
 
 declare const mounted: ComponentApi;
 // The generated component API must satisfy the client's hand-written contract.
@@ -99,7 +102,14 @@ export const permissions = new Permissions<"admin", "doc.read">(mounted);
 export const sameApi: ComponentApiJs = mounted;
 export const contract: PermissionsComponent = mounted;
 export const definitions = [component, componentJs] as const;
-export type Shapes = [RoleDoc, PermissionDenied, typeof register];
+export type Shapes = [RoleDoc, PermissionDenied];
+
+// register must accept a convexTest instance built from the host app's own schema.
+const hostSchema = defineSchema({ notes: defineTable({ body: v.string() }) });
+export function mountForTests(): void {
+  register(convexTest(hostSchema));
+  register(convexTest(), "custom");
+}
 EOF
 npx --no-install tsc -p tsconfig.json
 echo "OK    consumer type-check"
