@@ -20,15 +20,16 @@ All notable changes to this project are documented here. The format is based on
   stray scope. Scope refs 0.1.0 accepted, such as `""` or `"org/1"`, now throw. `revoke` still
   matches refs exactly and never validates, so previously stored rows can be removed.
 - **Breaking:** `defineRole` rejects empty-string grants (`grant must be a non-empty string`).
-- `engines.node` is `>=20`: the lowest supported peer, `convex@1.45.0`, requires Node.js 20.
+- **Breaking:** `engines.node` is `>=20`: the lowest supported peer, `convex@1.45.0`, requires
+  Node.js 20.
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
   bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.
 - `homepage` points to https://oss.vllnt.com/packages/convex-permissions.
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push
   to `main` that touches the package or its shipped docs publishes a canary (`@canary` dist-tag
   only), both with npm trusted publishing and provenance; actions are pinned to commit SHAs.
-  Both jobs smoke-test the packed tarball (imports and a strict consumer type-check) before
-  publishing. `pnpm` 10 with a release-age gate.
+  The quality gates both jobs need smoke-test the packed tarball (imports and a strict consumer
+  type-check) before anything publishes. `pnpm` 10 with a release-age gate.
 - Docs: `/test` setup for consuming apps, host-owned auth note, validation rules, the package
   entry points, that action `ctx` works, that `assign` does not require the role to be defined,
   and that `removeRole` keeps existing assignments (they apply again if the role name is reused).
