@@ -16,27 +16,29 @@ import type { RoleDoc } from "./types.js";
 /**
  * The component's function references, as exposed on the host via
  * `components.permissions`. Hand-written so the client typechecks without the
- * component's generated code — the host supplies the mounted ref.
+ * component's generated code — the host supplies the mounted ref. Optional
+ * args also accept `undefined` (for `exactOptionalPropertyTypes`): Convex drops
+ * object fields whose value is `undefined`, so it is the same as omitting them.
  */
 export interface PermissionsComponent {
   mutations: {
     defineRole: FunctionReference<
       "mutation",
       "internal",
-      { name: string; grants: string[]; description?: string },
+      { name: string; grants: string[]; description?: string | undefined },
       null
     >;
     removeRole: FunctionReference<"mutation", "internal", { name: string }, boolean>;
     assign: FunctionReference<
       "mutation",
       "internal",
-      { subjectRef: string; role: string; scopeRef?: string },
+      { subjectRef: string; role: string; scopeRef?: string | undefined },
       boolean
     >;
     revoke: FunctionReference<
       "mutation",
       "internal",
-      { subjectRef: string; role: string; scopeRef?: string },
+      { subjectRef: string; role: string; scopeRef?: string | undefined },
       boolean
     >;
   };
@@ -44,19 +46,19 @@ export interface PermissionsComponent {
     check: FunctionReference<
       "query",
       "internal",
-      { subjectRef: string; action: string; scopeRef?: string },
+      { subjectRef: string; action: string; scopeRef?: string | undefined },
       boolean
     >;
     rolesFor: FunctionReference<
       "query",
       "internal",
-      { subjectRef: string; scopeRef?: string },
+      { subjectRef: string; scopeRef?: string | undefined },
       string[]
     >;
     permissionsFor: FunctionReference<
       "query",
       "internal",
-      { subjectRef: string; scopeRef?: string },
+      { subjectRef: string; scopeRef?: string | undefined },
       string[]
     >;
     listRoles: FunctionReference<
@@ -87,7 +89,7 @@ export interface PermissionDenied {
   code: "FORBIDDEN";
   subjectRef: string;
   action: string;
-  scopeRef?: string;
+  scopeRef?: string | undefined;
 }
 
 /**
@@ -128,7 +130,11 @@ export class Permissions<
    */
   defineRole(
     ctx: RunMutationCtx,
-    role: { name: TRole; grants: readonly (TAction | string)[]; description?: string },
+    role: {
+      name: TRole;
+      grants: readonly (TAction | string)[];
+      description?: string | undefined;
+    },
   ): Promise<null> {
     return ctx.runMutation(this.component.mutations.defineRole, {
       name: role.name,
@@ -155,7 +161,7 @@ export class Permissions<
    */
   assign(
     ctx: RunMutationCtx,
-    args: { subjectRef: string; role: TRole; scopeRef?: string },
+    args: { subjectRef: string; role: TRole; scopeRef?: string | undefined },
   ): Promise<boolean> {
     return ctx.runMutation(this.component.mutations.assign, args);
   }
@@ -166,7 +172,7 @@ export class Permissions<
    */
   revoke(
     ctx: RunMutationCtx,
-    args: { subjectRef: string; role: TRole; scopeRef?: string },
+    args: { subjectRef: string; role: TRole; scopeRef?: string | undefined },
   ): Promise<boolean> {
     return ctx.runMutation(this.component.mutations.revoke, args);
   }
@@ -177,7 +183,7 @@ export class Permissions<
    */
   check(
     ctx: RunQueryCtx,
-    args: { subjectRef: string; action: TAction; scopeRef?: string },
+    args: { subjectRef: string; action: TAction; scopeRef?: string | undefined },
   ): Promise<boolean> {
     return ctx.runQuery(this.component.queries.check, args);
   }
@@ -188,7 +194,7 @@ export class Permissions<
    */
   async require(
     ctx: RunQueryCtx,
-    args: { subjectRef: string; action: TAction; scopeRef?: string },
+    args: { subjectRef: string; action: TAction; scopeRef?: string | undefined },
   ): Promise<void> {
     const allowed = await this.check(ctx, args);
     if (!allowed) {
@@ -207,7 +213,7 @@ export class Permissions<
   /** Role names the subject holds in the optional scope (sorted). */
   rolesFor(
     ctx: RunQueryCtx,
-    args: { subjectRef: string; scopeRef?: string },
+    args: { subjectRef: string; scopeRef?: string | undefined },
   ): Promise<string[]> {
     return ctx.runQuery(this.component.queries.rolesFor, args);
   }
@@ -215,7 +221,7 @@ export class Permissions<
   /** Distinct grants the subject has in the optional scope (sorted). */
   permissionsFor(
     ctx: RunQueryCtx,
-    args: { subjectRef: string; scopeRef?: string },
+    args: { subjectRef: string; scopeRef?: string | undefined },
   ): Promise<string[]> {
     return ctx.runQuery(this.component.queries.permissionsFor, args);
   }

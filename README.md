@@ -334,6 +334,7 @@ The eight validation errors are plain `Error`s, not `ConvexError`s. They reach t
 - `removeRole` keeps the role's assignments; defining the same name again re-activates them. No query lists a role's holders.
 - `revoke` never validates its arguments and deletes only the exact (subject, role, scope) row; `removeRole` does not validate the name.
 - `check`, `rolesFor`, and `permissionsFor` never validate refs and never throw for malformed ones. They match stored rows exactly, so a ref that `assign` rejects finds nothing (`false` or `[]`) unless 0.1.0 stored a row with it.
+- `scopeRef` or `description` set to `undefined` is the same as omitting it, so `exactOptionalPropertyTypes` projects can pass a `string | undefined` variable.
 - `defineRole` replaces grants and description; omitting `description` on an update removes it. An unchanged role (same grants in the same order, same description) writes nothing.
 - `listRoles` returns every role in one query, with no pagination.
 - The component cannot read `ctx.auth` ([Convex docs](https://docs.convex.dev/components/authoring): "Within a component, `ctx.auth` is not available"). Authenticate in the host and pass `subjectRef`.
@@ -353,7 +354,7 @@ pnpm test:coverage
 pnpm test:package
 ```
 
-Tests run the component with `convex-test` on the `@edge-runtime/vm` environment, with no mocks; `pnpm test:coverage` enforces 100% coverage. `pnpm test:package` packs the tarball, type-checks a strict consumer, and type-checks every `ts` example in this README and `docs/API.md` against it.
+Tests run the component with `convex-test` on the `@edge-runtime/vm` environment, with no mocks; `pnpm test:coverage` enforces 100% coverage. `pnpm test:package` packs the tarball, type-checks a strict consumer (with and without `exactOptionalPropertyTypes`), and type-checks every `ts` example in this README and `docs/API.md` against it.
 
 ## Security
 

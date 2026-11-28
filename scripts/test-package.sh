@@ -6,7 +6,8 @@
 # installs the tarball with pnpm into a throwaway consumer project next to the repo's installed
 # convex, convex-test, vite, and typescript versions, imports every runtime entry point
 # with node, and type-checks a consumer file that imports every entry point
-# (strict, skipLibCheck false, Bundler resolution). It also extracts every ```ts
+# (strict, skipLibCheck false, Bundler resolution), then again with
+# exactOptionalPropertyTypes. It also extracts every ```ts
 # block of README.md and docs/API.md and type-checks each one as a host-app file
 # against the tarball, next to stubs this script writes that mirror Convex codegen
 # (_generated/api, _generated/server, schema). Blocks that restate a package type get
@@ -185,5 +186,39 @@ node "$ROOT/scripts/extract-doc-examples.mjs" examples "$ROOT/README.md" "$ROOT/
 
 pnpm exec tsc -p tsconfig.json
 echo "OK    consumer and docs examples type-check"
+
+# The same files plus exact.ts with exactOptionalPropertyTypes: a host project using it
+# must be able to pass a `string | undefined` variable as scopeRef or description.
+cat > tsconfig.exact.json <<'EOF'
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "exactOptionalPropertyTypes": true },
+  "include": ["consumer.ts", "exact.ts", "examples/**/*.ts"]
+}
+EOF
+cat > exact.ts <<'EOF'
+import { Permissions, type PermissionDenied } from "@vllnt/convex-permissions";
+import type { ComponentApi } from "@vllnt/convex-permissions/_generated/component";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
+
+declare const mounted: ComponentApi;
+declare const ctx: GenericMutationCtx<GenericDataModel>;
+declare const scopeRef: string | undefined;
+declare const description: string | undefined;
+const permissions = new Permissions<"editor", "doc.edit">(mounted);
+
+export async function maybeUndefined(): Promise<PermissionDenied> {
+  await permissions.defineRole(ctx, { name: "editor", grants: ["doc.edit"], description });
+  await permissions.assign(ctx, { subjectRef: "u1", role: "editor", scopeRef });
+  await permissions.revoke(ctx, { subjectRef: "u1", role: "editor", scopeRef });
+  await permissions.check(ctx, { subjectRef: "u1", action: "doc.edit", scopeRef });
+  await permissions.require(ctx, { subjectRef: "u1", action: "doc.edit", scopeRef });
+  await permissions.rolesFor(ctx, { subjectRef: "u1", scopeRef });
+  await permissions.permissionsFor(ctx, { subjectRef: "u1", scopeRef });
+  return { code: "FORBIDDEN", subjectRef: "u1", action: "doc.edit", scopeRef };
+}
+EOF
+pnpm exec tsc -p tsconfig.exact.json
+echo "OK    consumer, docs examples, and exact.ts type-check with exactOptionalPropertyTypes"
 
 echo "OK    test-package.sh"
