@@ -4,27 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-11-28
 
 ### Added
 
-- The npm package now ships `docs/*.md`, `CHANGELOG.md`, and `llms.txt`, so coding agents
-  can read docs that match the installed version under `node_modules/@vllnt/convex-permissions/`.
-  `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
-  from the tarball or a contributor-only file would ship.
-- `pnpm check:docs` (part of `pnpm lint`) fails when the README sections, API table, errors
-  table, README version line, relative links, code-block language tags, or the fixed Links,
-  footer, and `llms.txt` Ecosystem blocks drift from the code. `pnpm check:links` requests every external docs URL
-  except npmjs.com (its own CI job). `pnpm test:package` type-checks every `ts` example in `README.md` and
-  `docs/API.md` against the packed tarball.
+- The npm package ships `docs/API.md`, `CHANGELOG.md`, and `llms.txt` next to `README.md` and
+  `src/`, so coding agents can read docs that match the installed version under
+  `node_modules/@vllnt/convex-permissions/`. `llms.txt` links the shipped files relatively.
 
 ### Changed
 
 - **Breaking:** `assign` validates `scopeRef` against the same token pattern as `subjectRef`
   (`^[A-Za-z0-9_.:-]{1,128}$`), so an empty or malformed scope can no longer be stored as a
-  stray scope. Scope refs 0.1.0 accepted, such as `""` or `"org/1"`, now throw. `revoke` still
-  matches refs exactly and never validates, so previously stored rows can be removed.
+  stray scope. Scope refs 0.1.0 accepted, such as `""` or `"org/1"`, now throw
+  `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`: omit `scopeRef` for a global assignment or
+  map the scope to a valid ID. `revoke`, `check`, `rolesFor`, and `permissionsFor` still match
+  refs exactly and never validate, so rows 0.1.0 stored stay readable and can be revoked.
 - **Breaking:** `defineRole` rejects empty-string grants (`grant must be a non-empty string`).
+  Remove `""` from the grants you pass.
 - **Breaking:** `defineRole` caps role size: at most 256 grants per role, 256 characters per
   grant, and 1024 characters of description, counted as JavaScript string length (UTF-16 code
   units: `"é"` counts 1, most emoji count 2). Larger inputs now throw
@@ -36,39 +33,34 @@ All notable changes to this project are documented here. The format is based on
   new grant over 256 characters (a stored one may be kept, at most as many times). Each limit is
   checked on its own, and grants of 256 characters or fewer are always accepted, so such an
   update can still raise the role's total size.
-- **Breaking:** `engines.node` is `>=20`: the lowest supported peer, `convex@1.45.0`, requires
-  Node.js 20.
-- `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
-  bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.
-- `homepage` points to https://oss.vllnt.com/packages/convex-permissions.
-- `description` is now "Role-based access control (RBAC) component for Convex: runtime-editable
-  roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client." and is the
-  same sentence in `README.md` and `llms.txt`. `keywords` add `typescript` and
-  `role-based-access-control`.
-- README restructured for coding agents: When to use, Install, Quick start, an API table that
-  links every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
-  Compatibility, and Links. The Related packages list is removed: no other package is used with
-  this one in code. `docs/API.md` documents every export with an anchor; `llms.txt` adds when to
-  use, links to the README errors and limits sections, and the Ecosystem links.
-- TSDoc on the client entry, its methods (thrown errors, no-op and scope rules), and the
-  `convex.config` default export. No runtime change.
-- Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push
-  to `main` publishes a canary (`@canary` dist-tag only), both with npm trusted publishing and
-  provenance; actions are pinned to commit SHAs. The quality gates both jobs need smoke-test
-  the packed tarball (imports and a strict consumer type-check) before anything publishes.
-  `pnpm` 10 with a release-age gate.
-- Docs: `/test` setup for consuming apps, host-owned auth note, validation rules, the package
-  entry points, that action `ctx` works, that `assign` does not require the role to be defined,
-  and that `removeRole` keeps existing assignments (they apply again if the role name is reused).
-- Internal: CI and publish set up pnpm through Corepack, CI cancels only superseded pull request
-  runs, and there is no update bot.
+- **Breaking:** `check` and `require` always deny an empty `action` (`""`), even for a `"*"`
+  grant; 0.1.0 allowed it for a `"*"` or `""` grant. Pass the real, non-empty action string.
+- **Breaking:** `engines.node` is `>=20` (was `>=18`): the lowest supported peer,
+  `convex@1.45.0`, requires Node.js 20. The `convex` peer range is unchanged (`^1.45.0`).
+- `defineRole` skips the write when grants (same order) and description are unchanged: no
+  `updatedAt` bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC
+  contention.
+- npm metadata: `homepage` is https://oss.vllnt.com/packages/convex-permissions, the
+  `description` is the same sentence as in `README.md` and `llms.txt`, and `keywords` add
+  `typescript` and `role-based-access-control`.
+- Docs: the README is restructured for coding agents (When to use, Quick start, an API table
+  linking every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
+  Compatibility) and drops the Related packages list; `docs/API.md` documents every export,
+  validation rule, and thrown error; the client has TSDoc on every method. No runtime change.
+- Releases: a stable version publishes only from a `vX.Y.Z` tag on `main`, and every merge to
+  `main` publishes a `@canary` build; both use npm trusted publishing with provenance.
+- Internal: CI and the publish workflow (pinned actions, pnpm 10 through Corepack with a
+  release-age gate, no update bot), docs and package-content checks in `pnpm lint`, and a
+  packed-tarball consumer test, including every docs example.
 
 ### Fixed
 
 - `register` from `@vllnt/convex-permissions/test` accepts a `convexTest` instance built from
   the host app's own schema; it was typed against the component schema and rejected with
   TS2345. No runtime change.
-- `check` / `require` always deny an empty `action`, even for a `"*"` grant.
+- `scopeRef` and `description` accept `undefined` under `exactOptionalPropertyTypes`, so a
+  `string | undefined` variable type-checks; `undefined` behaves like an omitted field. No
+  runtime change.
 
 ## [0.1.0] - 2026-09-01
 
