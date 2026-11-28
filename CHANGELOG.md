@@ -12,6 +12,11 @@ All notable changes to this project are documented here. The format is based on
   can read docs that match the installed version under `node_modules/@vllnt/convex-permissions/`.
   `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
   from the tarball or a contributor-only file would ship.
+- `pnpm check:docs` (part of `pnpm lint`) fails when the README sections, API table, errors
+  table, relative links, code-block language tags, or the fixed Links, footer, and `llms.txt`
+  Ecosystem blocks drift from the code. `pnpm check:links` requests every external docs URL
+  (its own CI step). `pnpm test:package` type-checks every `ts` example in `README.md` and
+  `docs/API.md` against the packed tarball.
 
 ### Changed
 

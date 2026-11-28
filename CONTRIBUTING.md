@@ -31,6 +31,8 @@ at least one adversarial test (auth-denied, invalid input, boundary).
 ## Code Style
 
 - Prettier + ESLint (run `pnpm lint` before submitting)
+- `pnpm lint` also runs `pnpm check:docs` (README, `docs/API.md`, and `llms.txt` in sync with
+  `src/`); `pnpm check:links` checks external docs links and needs network
 - `@vllnt/eslint-config/convex` enforces: namespace separation, snake_case filenames, no bare
   `v.any()`, require returns validators, no N+1 queries
 - No `any` — use `unknown` + type guards
