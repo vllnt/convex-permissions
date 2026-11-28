@@ -32,6 +32,9 @@ CONVEX_TEST_VERSION="$(installed_version convex-test)"
 VITE_VERSION="$(installed_version vite)"
 TS_VERSION="$(installed_version typescript)"
 VITEST_VERSION="$(installed_version vitest)"
+# The consumer pins the repo's pnpm, so Corepack never fetches a pnpm newer than the
+# release-age gate allows.
+PACKAGE_MANAGER="$(node -p "require('./package.json').packageManager")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -49,8 +52,8 @@ consumer="$tmp/consumer"
 mkdir -p "$consumer"
 cd "$consumer"
 
-cat > package.json <<'EOF'
-{ "name": "package-smoke-consumer", "private": true, "type": "module" }
+cat > package.json <<EOF
+{ "name": "package-smoke-consumer", "private": true, "type": "module", "packageManager": "$PACKAGE_MANAGER" }
 EOF
 # Carries the repo's release-age gate and its @vllnt/* exclusion into the consumer: a
 # parent pnpm run passes only the age through the environment, not the exclusion, and
