@@ -8,8 +8,9 @@
 # with node, and type-checks a consumer file that imports every entry point
 # (strict, skipLibCheck false, Bundler resolution). It also extracts every ```ts
 # block of README.md and docs/API.md and type-checks each one as a host-app file
-# against the tarball, next to stubs that mirror Convex codegen
-# (scripts/docs-examples-stubs: _generated/api, _generated/server, schema).
+# against the tarball, next to stubs this script writes that mirror Convex codegen
+# (_generated/api, _generated/server, schema). Blocks that restate a package type get
+# a type-equality assertion against the real export (scripts/extract-doc-examples.mjs).
 #
 # Exit codes: 0 pass, non-zero on any pack, install, import, or type-check failure.
 
