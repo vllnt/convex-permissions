@@ -3,7 +3,7 @@
 # test-package.sh — smoke-test the packed npm tarball the way a consumer sees it.
 #
 # Expects an existing build in dist/ (run `pnpm build` first). Packs the package,
-# installs the tarball into a throwaway consumer project next to the repo's installed
+# installs the tarball with pnpm into a throwaway consumer project next to the repo's installed
 # convex, convex-test, vite, and typescript versions, imports every runtime entry point
 # with node, and type-checks a consumer file that imports every entry point
 # (strict, skipLibCheck false, Bundler resolution). It also extracts every ```ts
@@ -47,8 +47,11 @@ cd "$consumer"
 cat > package.json <<'EOF'
 { "name": "package-smoke-consumer", "private": true, "type": "module" }
 EOF
+# The copied settings file makes the consumer its own pnpm project root and holds its
+# install to the repo's release-age gate (pnpm 10 reads that gate only from this file).
+cp "$ROOT/pnpm-workspace.yaml" pnpm-workspace.yaml
 
-npm install --no-audit --no-fund --ignore-scripts --prefer-offline --loglevel=error \
+pnpm add --ignore-scripts --prefer-offline --loglevel=error \
   "$tarball" \
   "convex@$CONVEX_VERSION" \
   "convex-test@$CONVEX_TEST_VERSION" \
@@ -170,7 +173,7 @@ export type ActionCtx = GenericActionCtx<DataModel>;
 EOF
 node "$ROOT/scripts/extract-doc-examples.mjs" examples "$ROOT/README.md" "$ROOT/docs/API.md"
 
-npx --no-install tsc -p tsconfig.json
+pnpm exec tsc -p tsconfig.json
 echo "OK    consumer and docs examples type-check"
 
 echo "OK    test-package.sh"
