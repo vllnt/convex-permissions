@@ -8,6 +8,12 @@ override what you may have learned about Convex from training data.
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
 
+The guidelines file is generated and git-ignored, so a fresh clone does not have it: create it with
+`pnpm exec convex ai-files install` (needs network). That command also rewrites the block above and
+writes `CLAUDE.md`, `.claude/skills/`, `.agents/skills/`, and `skills-lock.json`, so afterwards run
+`git restore AGENTS.md` and delete `CLAUDE.md` and `.claude/` (`pnpm lint` fails while they exist);
+commit none of it. If you cannot run it, continue without the file and follow this file's rules.
+
 # @vllnt/convex-permissions
 
 Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and
