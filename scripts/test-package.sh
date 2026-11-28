@@ -3,7 +3,7 @@
 # test-package.sh — smoke-test the packed npm tarball the way a consumer sees it.
 #
 # Expects an existing build in dist/ (run `pnpm build` first). Packs the package,
-# installs the tarball into a throwaway consumer project next to the repo's installed
+# installs the tarball with pnpm into a throwaway consumer project next to the repo's installed
 # convex, convex-test, vite, and typescript versions, imports every runtime entry point
 # with node, and type-checks a consumer file that imports every entry point
 # (strict, skipLibCheck false, Bundler resolution). It also extracts every ```ts
@@ -40,6 +40,11 @@ npm pack --ignore-scripts --silent --pack-destination "$tmp" > "$tmp/pack-name.t
 tarball="$tmp/$(tail -n 1 "$tmp/pack-name.txt")"
 [[ -f "$tarball" ]] || { echo "error: npm pack produced no tarball" >&2; exit 1; }
 
+# Resolved from the repo so the consumer reuses its store; when the temp dir sits on
+# another filesystem (e.g. a tmpfs /tmp), pnpm would otherwise create a new store
+# there that the trap below never removes.
+STORE_DIR="$(pnpm store path)"
+
 consumer="$tmp/consumer"
 mkdir -p "$consumer"
 cd "$consumer"
@@ -47,8 +52,13 @@ cd "$consumer"
 cat > package.json <<'EOF'
 { "name": "package-smoke-consumer", "private": true, "type": "module" }
 EOF
+# Carries the repo's release-age gate and its @vllnt/* exclusion into the consumer: a
+# parent pnpm run passes only the age through the environment, not the exclusion, and
+# running this script directly with bash passes neither. It also makes the consumer
+# its own pnpm project root.
+cp "$ROOT/pnpm-workspace.yaml" pnpm-workspace.yaml
 
-npm install --no-audit --no-fund --ignore-scripts --prefer-offline --loglevel=error \
+pnpm add --ignore-scripts --prefer-offline --loglevel=error --store-dir "$STORE_DIR" \
   "$tarball" \
   "convex@$CONVEX_VERSION" \
   "convex-test@$CONVEX_TEST_VERSION" \
@@ -170,7 +180,7 @@ export type ActionCtx = GenericActionCtx<DataModel>;
 EOF
 node "$ROOT/scripts/extract-doc-examples.mjs" examples "$ROOT/README.md" "$ROOT/docs/API.md"
 
-npx --no-install tsc -p tsconfig.json
+pnpm exec tsc -p tsconfig.json
 echo "OK    consumer and docs examples type-check"
 
 echo "OK    test-package.sh"
