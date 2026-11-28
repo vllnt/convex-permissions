@@ -1,7 +1,7 @@
 {
   "name": "@vllnt/convex-permissions",
   "version": "0.2.0",
-  "description": "Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs",
+  "description": "Role-based access control (RBAC) component for Convex: runtime-editable roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.8",
@@ -99,8 +99,10 @@
   "keywords": [
     "convex",
     "convex-component",
-    "permissions",
+    "typescript",
     "rbac",
+    "role-based-access-control",
+    "permissions",
     "roles",
     "authorization",
     "access-control",
