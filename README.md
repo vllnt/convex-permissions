@@ -264,7 +264,7 @@ export async function accessSummary(
 
 ### Test your app with register
 
-Needs `convex-test` and Vitest (Vite's `import.meta.glob`).
+Needs `convex-test`, Vitest, and `vite` as direct dev dependencies: the snippet references `vite/client` types for `import.meta.glob`, and pnpm does not hoist Vitest's own `vite`.
 
 ```ts
 /// <reference types="vite/client" />
@@ -344,7 +344,8 @@ The eight validation errors are plain `Error`s, not `ConvexError`s. They reach t
 
 - Peer dependency `convex@^1.45.0`; `engines.node` `>=20`; ESM package (`"type": "module"`).
 - Convex Cloud and self-hosted: the component uses only standard component APIs (`defineComponent`, `ctx.db`, `runQuery`, `runMutation`) and no deployment-specific API. This repo's tests run on `convex-test`, not on a live deployment.
-- `/test` ships as TypeScript source and uses `import.meta.glob`: it needs `convex-test` and Vitest or another Vite-based runner.
+- `/test` ships as TypeScript source and uses `import.meta.glob`: it needs `convex-test`, Vitest or another Vite-based runner, and `vite` installed directly for the `vite/client` types.
+- `/test` also needs a `convex` version that the installed `convex-test` supports: convex-test 0.0.73 to 0.0.75 need `convex@^1.46.0`. The component itself works on `convex@1.45.0`.
 
 ## Testing
 
