@@ -49,6 +49,8 @@ All notable changes to this project are documented here. The format is based on
 - Docs: `/test` setup for consuming apps, host-owned auth note, validation rules, the package
   entry points, that action `ctx` works, that `assign` does not require the role to be defined,
   and that `removeRole` keeps existing assignments (they apply again if the role name is reused).
+- Internal: CI and publish set up pnpm through Corepack, CI cancels only superseded pull request
+  runs, and there is no update bot.
 
 ### Fixed
 

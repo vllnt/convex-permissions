@@ -39,6 +39,11 @@ at least one adversarial test (auth-denied, invalid input, boundary).
 - Explicit return types on public APIs
 - Mutations in `mutations.ts`, queries in `queries.ts`, validators in `validators.ts`
 
+## Dependencies
+
+Dependency updates are a manual pass; there is no update bot. `minimumReleaseAge` in
+`pnpm-workspace.yaml` holds every new version back for 7 days, except `@vllnt/*`.
+
 ## Pull Requests
 
 - Target `main`
