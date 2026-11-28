@@ -177,7 +177,7 @@ describe("roles stored before the size limits", () => {
     expect((await storedRole())?.grants).toEqual(wide);
   });
 
-  test("an oversized role cannot grow", async () => {
+  test("an oversized role cannot pass the larger of limit and stored value, or add a long grant", async () => {
     const { define, storedRole } = await setupLegacy();
     await expect(define([...legacyGrants, "extra"], legacyDescription)).rejects.toThrow(
       /a role may have at most 256 grants/,
