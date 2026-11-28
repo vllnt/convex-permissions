@@ -73,8 +73,10 @@ Creates the role, or replaces the grants and description of the role with that
   - `description` at most 1024 characters, else it throws
     `description must be at most 1024 characters`.
 - A role stored before these limits (by 0.1.0) may exceed them. It stays
-  readable by every query, and `defineRole` can update it as long as the update
-  gains no grants, no longer description, and no new grant over 256 characters:
+  readable by every query, and `defineRole` can update it as long as the grant
+  count and description length each stay within the larger of the limit and the
+  stored value, and it adds no new grant over 256 characters. Each rule is
+  checked on its own:
   - at most 256 grants or the stored count, whichever is larger;
   - a description of at most 1024 characters or the stored length, whichever is
     larger (omitting it is always accepted);

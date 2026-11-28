@@ -43,12 +43,11 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 
 /**
  * Enforce the role size limits on a `defineRole` input. A role stored before
- * the limits may exceed them and stays updatable as long as the update gains
- * no grants, no longer description, and no new grant over the limit: at most
- * max(limit, stored count) grants, a description of at most max(limit, stored
- * length), and a grant over the limit only if the stored role holds it, at most
- * as many times. Grants within the limit are always accepted, so the total size
- * of such a role can still grow, bounded by its grant count times the limit.
+ * the limits may exceed them and stays updatable as long as its grant count and
+ * description length each stay within the larger of the limit and the stored
+ * value, and the update adds no new grant over the limit (a stored one may be
+ * kept, at most as many times). Each rule is checked on its own, and grants
+ * within the limit are always accepted, so the total size can still grow.
  */
 export function assertRoleLimits(
   grants: readonly string[],

@@ -117,9 +117,9 @@ export class Permissions<
    *
    * At most 256 grants of at most 256 characters and a description of at most
    * 1024 characters (UTF-16 code units). A role stored over these limits can be
-   * updated as long as the update gains no grants, no longer description, and
-   * no new grant over 256 characters (a stored long grant may be kept, at most
-   * as many times as stored).
+   * updated as long as its grant count and description length each stay within
+   * the larger of the limit and the stored value, and it adds no new grant over
+   * 256 characters (a stored one may be kept, at most as many times).
    *
    * @throws Error `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`,
    * `grant must be a non-empty string`, `a role may have at most 256 grants`,
