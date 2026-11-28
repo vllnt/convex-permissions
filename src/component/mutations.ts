@@ -34,7 +34,9 @@ export const defineRole = mutation({
     await ctx.db.insert("roles", {
       name: args.name,
       grants: args.grants,
-      description: args.description,
+      ...(args.description === undefined
+        ? {}
+        : { description: args.description }),
       updatedAt: Date.now(),
     });
     return null;
@@ -87,7 +89,7 @@ export const assign = mutation({
     await ctx.db.insert("assignments", {
       subjectRef: args.subjectRef,
       role: args.role,
-      scopeRef: args.scopeRef,
+      ...(args.scopeRef === undefined ? {} : { scopeRef: args.scopeRef }),
       createdAt: Date.now(),
     });
     return true;
