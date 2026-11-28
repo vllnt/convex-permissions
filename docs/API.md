@@ -54,9 +54,13 @@ Every method takes the host `ctx` first:
 - Read methods (`check`, `require`, `rolesFor`, `permissionsFor`, `listRoles`)
   need a `ctx` with `runQuery`: a query, mutation, action, or HTTP action `ctx`.
 
+Optional fields (`scopeRef`, `description`) also accept `undefined`, which
+behaves exactly like omitting the field. Projects with
+`exactOptionalPropertyTypes` can pass a `string | undefined` variable.
+
 ### defineRole
 
-`defineRole(ctx, role: { name: TRole; grants: readonly (TAction | string)[]; description?: string }): Promise<null>`
+`defineRole(ctx, role: { name: TRole; grants: readonly (TAction | string)[]; description?: string | undefined }): Promise<null>`
 
 Creates the role, or replaces the grants and description of the role with that
 `name` (upsert by name).
@@ -111,7 +115,7 @@ no role had that name.
 
 ### assign
 
-`assign(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string }): Promise<boolean>`
+`assign(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string | undefined }): Promise<boolean>`
 
 Assigns `role` to `subjectRef`, globally (no `scopeRef`) or in one scope.
 Resolves `true` if the assignment was created, `false` if it already existed
@@ -130,7 +134,7 @@ Resolves `true` if the assignment was created, `false` if it already existed
 
 ### revoke
 
-`revoke(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string }): Promise<boolean>`
+`revoke(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string | undefined }): Promise<boolean>`
 
 Deletes the one assignment that matches `subjectRef`, `role`, and `scopeRef`
 exactly. Resolves `true` if it deleted one, `false` otherwise.
@@ -142,7 +146,7 @@ exactly. Resolves `true` if it deleted one, `false` otherwise.
 
 ### check
 
-`check(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string }): Promise<boolean>`
+`check(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string | undefined }): Promise<boolean>`
 
 Resolves `true` if a role assigned to `subjectRef` has a grant that matches
 `action` (see [Grant matching](#grant-matching)), else `false`.
@@ -157,7 +161,7 @@ Resolves `true` if a role assigned to `subjectRef` has a grant that matches
 
 ### require
 
-`require(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string }): Promise<void>`
+`require(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string | undefined }): Promise<void>`
 
 Runs `check` and resolves when it is `true`. When it is `false`, it throws a
 `ConvexError` whose `data` is a [`PermissionDenied`](#permissiondenied):
@@ -179,7 +183,7 @@ how to detect it.
 
 ### rolesFor
 
-`rolesFor(ctx, args: { subjectRef: string; scopeRef?: string }): Promise<string[]>`
+`rolesFor(ctx, args: { subjectRef: string; scopeRef?: string | undefined }): Promise<string[]>`
 
 Role names assigned to `subjectRef` that apply in the scope (global, plus the
 scope when given), without duplicates, sorted. Includes assigned role names that
@@ -188,7 +192,7 @@ refs.
 
 ### permissionsFor
 
-`permissionsFor(ctx, args: { subjectRef: string; scopeRef?: string }): Promise<string[]>`
+`permissionsFor(ctx, args: { subjectRef: string; scopeRef?: string | undefined }): Promise<string[]>`
 
 The stored grant strings of the defined roles from `rolesFor`, without
 duplicates, sorted. Wildcard grants are returned as stored (`"doc.*"`, `"*"`),
@@ -231,7 +235,7 @@ export interface PermissionDenied {
   code: "FORBIDDEN";
   subjectRef: string;
   action: string;
-  scopeRef?: string;
+  scopeRef?: string | undefined;
 }
 ```
 
@@ -329,6 +333,11 @@ export function createPermissions(component: ComponentApi): Permissions {
   return new Permissions(component);
 }
 ```
+
+Codegen types its optional args as `scopeRef?: string` and
+`description?: string`. With `exactOptionalPropertyTypes`, calling a function
+of `components.permissions` directly therefore rejects a `string | undefined`;
+call it through `Permissions`, which accepts one.
 
 ## Error codes
 
