@@ -1,7 +1,5 @@
 # @vllnt/convex-permissions
 
-![Permissions (RBAC) — @vllnt/convex-permissions](https://raw.githubusercontent.com/vllnt/convex-permissions/main/.github/assets/thumbnail.png)
-
 Role-based access control (RBAC) component for Convex: runtime-editable roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client.
 
 ## For coding agents
