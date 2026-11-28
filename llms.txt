@@ -1,43 +1,48 @@
 # @vllnt/convex-permissions
 
-> Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs
+> Role-based access control (RBAC) component for Convex: runtime-editable roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client.
 
-`@vllnt/convex-permissions` is a publishable Convex component. It targets `convex@^1.45.0`.
-
-It provides stored, runtime-editable role-based access control. The component owns two sandboxed
-tables — `roles` (a role name → its grants) and `assignments` (an opaque `subjectRef` → a role,
-with an optional opaque `scopeRef` for multi-tenancy). The consumer-facing `Permissions<TRole,
-TAction>` client, generic over the host's role and action unions, exposes `defineRole`, `removeRole`,
-`assign`, `revoke`, `check`, `require`, `rolesFor`, `permissionsFor`, and `listRoles`. Grants support
-exact, prefix-wildcard (`doc.*`), and global (`*`) matching; checks are default-deny and `require`
-throws `ConvexError<PermissionDenied>`. The component is agnostic on every axis — opaque refs, no auth
-library, no domain model, no vendor — and runs identically on Convex Cloud and self-hosted backends.
+A Convex component with two tables: `roles` (a role name and its grants) and `assignments` (an opaque `subjectRef`, a role, and an optional opaque `scopeRef`). The `Permissions<TRole, TAction>` client exposes `defineRole`, `removeRole`, `assign`, `revoke`, `check`, `require`, `rolesFor`, `permissionsFor`, and `listRoles`. Grants match exactly, by trailing `.*` prefix, or by `"*"`. Checks are default-deny; `require` throws a `ConvexError` with `data.code` `"FORBIDDEN"`. Peer `convex@^1.45.0`, Node.js `>=20`.
 
 ## For coding agents
 
-The npm package bundles these docs at `node_modules/@vllnt/convex-permissions/`: this file,
-`README.md`, `docs/API.md`, `CHANGELOG.md`, and the TypeScript source in `src/`. They match the
-installed version. Read them before writing code that uses this package.
+These docs ship in `node_modules/@vllnt/convex-permissions/` and match the installed version: this file, `README.md`, `docs/API.md`, `CHANGELOG.md`, and the TypeScript source in `src/`.
+
+## When to use
+
+- Use it when roles and grants must change at runtime without a redeploy.
+- Use it when a subject holds different roles per tenant, org, or workspace (`scopeRef`).
+- Use it when you need default-deny checks from Convex queries, mutations, actions, and HTTP actions, typed by your role and action unions.
+- Do not use it for relationship-based access (ReBAC): model relationships in your own tables and indexes.
+- Do not use it for attribute-based policies (ABAC): check resource fields in your own query or mutation code.
+- Do not use it for roles fixed at deploy time: a typed `Record<Role, Action[]>` helper in your own code is enough.
 
 ## Docs
 
-- [README](./README.md): Project overview, installation, usage examples, security model
-- [API Reference](./docs/API.md): Entry points, client methods, return shapes, input validation
+- [README](./README.md): Install, quick start, API table, common tasks, limits
+- [API reference](./docs/API.md): Every export with signatures, defaults, return shapes, validation
+- [Errors and fixes](./README.md#errors-and-fixes): Every thrown error with its cause and fix
+- [Limits and gotchas](./README.md#limits-and-gotchas): Token pattern, default-deny, scope rules, silent no-ops
 - [Changelog](./CHANGELOG.md): Version history and release notes
 - [Contributing](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow (repository only)
 
 ## Examples
 
-- [Example component wrapper](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.ts): Host-app wrapper functions (repository only)
-- [Example tests](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.test.ts): End-to-end usage coverage with `convex-test` (repository only)
+- [Example host functions](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.ts): Host-app wrappers for every client method (repository only)
+- [Example tests](https://github.com/vllnt/convex-permissions/blob/main/example/convex/example.test.ts): End-to-end tests with `convex-test` (repository only)
 
 ## Optional
 
 - [License](./LICENSE): MIT license
-- [Security Policy](https://github.com/vllnt/convex-permissions/blob/main/SECURITY.md): Vulnerability reporting policy
-- [Code of Conduct](https://github.com/vllnt/convex-permissions/blob/main/CODE_OF_CONDUCT.md): Community participation guidelines
+- [Security policy](https://github.com/vllnt/convex-permissions/blob/main/SECURITY.md): Vulnerability reporting (repository only)
+- [Code of conduct](https://github.com/vllnt/convex-permissions/blob/main/CODE_OF_CONDUCT.md): Community guidelines (repository only)
 - [AGENTS](https://github.com/vllnt/convex-permissions/blob/main/AGENTS.md): Instructions for agents working on this repository (repository only)
 
 ## Ecosystem
 
-- [vllnt oss](https://oss.vllnt.com/llms.txt): Index of the @vllnt packages
+- [Package page](https://oss.vllnt.com/packages/convex-permissions)
+- [Release feed](https://oss.vllnt.com/packages/convex-permissions/rss.xml)
+- [All @vllnt packages](https://oss.vllnt.com/llms.txt)
+- [Search vllnt packages and docs](https://index.vllnt.com)
+- [vllnt](https://vllnt.com/llms.txt)
+- [Author](https://bntvllnt.com)

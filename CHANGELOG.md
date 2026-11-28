@@ -12,6 +12,11 @@ All notable changes to this project are documented here. The format is based on
   can read docs that match the installed version under `node_modules/@vllnt/convex-permissions/`.
   `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
   from the tarball or a contributor-only file would ship.
+- `pnpm check:docs` (part of `pnpm lint`) fails when the README sections, API table, errors
+  table, README version line, relative links, code-block language tags, or the fixed Links,
+  footer, and `llms.txt` Ecosystem blocks drift from the code. `pnpm check:links` requests every external docs URL
+  except npmjs.com (its own CI job). `pnpm test:package` type-checks every `ts` example in `README.md` and
+  `docs/API.md` against the packed tarball.
 
 ### Changed
 
@@ -25,6 +30,17 @@ All notable changes to this project are documented here. The format is based on
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
   bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.
 - `homepage` points to https://oss.vllnt.com/packages/convex-permissions.
+- `description` is now "Role-based access control (RBAC) component for Convex: runtime-editable
+  roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client." and is the
+  same sentence in `README.md` and `llms.txt`. `keywords` add `typescript` and
+  `role-based-access-control`.
+- README restructured for coding agents: When to use, Install, Quick start, an API table that
+  links every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
+  Compatibility, and Links. The Related packages list is removed: no other package is used with
+  this one in code. `docs/API.md` documents every export with an anchor; `llms.txt` adds when to
+  use, links to the README errors and limits sections, and the Ecosystem links.
+- TSDoc on the client entry, its methods (thrown errors, no-op and scope rules), and the
+  `convex.config` default export. No runtime change.
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push
   to `main` that touches the package or its shipped docs publishes a canary (`@canary` dist-tag
   only), both with npm trusted publishing and provenance; actions are pinned to commit SHAs.

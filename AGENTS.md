@@ -97,11 +97,15 @@ When any of these change, update the corresponding docs in the same commit:
 | Change | Update |
 |--------|--------|
 | Mutation/query args or return types | `docs/API.md`, `README.md` API table |
-| Schema table added/removed/modified | `AGENTS.md` Structure + Ownership boundary, `README.md` Architecture |
-| Grant-matching logic changed | `README.md` Features, `docs/API.md` Grant matching |
-| Security model changed | `README.md` Security Model |
-| New feature or breaking change | `CHANGELOG.md`, `README.md` Features |
-| Input validation rules changed | `docs/API.md` Error codes |
+| Schema table added/removed/modified | `AGENTS.md` Structure + Ownership boundary, `llms.txt` summary |
+| Grant-matching logic changed | `README.md` Limits and gotchas, `docs/API.md` Grant matching |
+| Security model changed | `README.md` Security |
+| New feature or breaking change | `CHANGELOG.md`, `README.md` When to use and Common tasks |
+| Input validation rules changed | `README.md` Errors and fixes, `docs/API.md` Error codes |
+
+`pnpm check:docs` (run by `pnpm lint`) enforces the README section order, the API and errors
+tables against `src/`, relative links, and the fixed Links, footer, and `llms.txt` Ecosystem
+blocks; `pnpm test:package` type-checks every `ts` docs example against the packed tarball.
 
 Always run `pnpm lint && pnpm build && pnpm test && pnpm generate:llms` before committing docs
 changes.

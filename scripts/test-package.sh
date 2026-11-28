@@ -6,7 +6,11 @@
 # installs the tarball into a throwaway consumer project next to the repo's installed
 # convex, convex-test, vite, and typescript versions, imports every runtime entry point
 # with node, and type-checks a consumer file that imports every entry point
-# (strict, skipLibCheck false, Bundler resolution).
+# (strict, skipLibCheck false, Bundler resolution). It also extracts every ```ts
+# block of README.md and docs/API.md and type-checks each one as a host-app file
+# against the tarball, next to stubs this script writes that mirror Convex codegen
+# (_generated/api, _generated/server, schema). Blocks that restate a package type get
+# a type-equality assertion against the real export (scripts/extract-doc-examples.mjs).
 #
 # Exit codes: 0 pass, non-zero on any pack, install, import, or type-check failure.
 
@@ -27,6 +31,7 @@ CONVEX_VERSION="$(installed_version convex)"
 CONVEX_TEST_VERSION="$(installed_version convex-test)"
 VITE_VERSION="$(installed_version vite)"
 TS_VERSION="$(installed_version typescript)"
+VITEST_VERSION="$(installed_version vitest)"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -48,6 +53,7 @@ npm install --no-audit --no-fund --ignore-scripts --prefer-offline --loglevel=er
   "convex@$CONVEX_VERSION" \
   "convex-test@$CONVEX_TEST_VERSION" \
   "vite@$VITE_VERSION" \
+  "vitest@$VITEST_VERSION" \
   "typescript@$TS_VERSION"
 
 cat > runtime.mjs <<'EOF'
@@ -76,7 +82,7 @@ cat > tsconfig.json <<'EOF'
     "noEmit": true,
     "types": []
   },
-  "include": ["consumer.ts"]
+  "include": ["consumer.ts", "examples/**/*.ts"]
 }
 EOF
 
@@ -111,7 +117,60 @@ export function mountForTests(): void {
   register(convexTest(), "custom");
 }
 EOF
+# Docs examples are host-app files importing ./_generated/api, ./_generated/server, and
+# ./schema; the stubs mirror Convex codegen for a host that mounts the component as
+# `permissions`, typed with the package's own ComponentApi.
+mkdir -p examples/_generated
+cat > examples/schema.ts <<'EOF'
+import { defineSchema } from "convex/server";
+
+export default defineSchema({});
+EOF
+cat > examples/_generated/api.ts <<'EOF'
+import { anyApi, componentsGeneric } from "convex/server";
+import type { ComponentApi } from "@vllnt/convex-permissions/_generated/component";
+
+export const api = anyApi;
+export const internal = anyApi;
+export const components = componentsGeneric() as unknown as {
+  permissions: ComponentApi<"permissions">;
+};
+EOF
+cat > examples/_generated/server.ts <<'EOF'
+import {
+  actionGeneric,
+  httpActionGeneric,
+  internalActionGeneric,
+  internalMutationGeneric,
+  internalQueryGeneric,
+  mutationGeneric,
+  queryGeneric,
+  type ActionBuilder,
+  type DataModelFromSchemaDefinition,
+  type GenericActionCtx,
+  type GenericMutationCtx,
+  type GenericQueryCtx,
+  type HttpActionBuilder,
+  type MutationBuilder,
+  type QueryBuilder,
+} from "convex/server";
+import type schema from "../schema";
+
+export type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+export const query: QueryBuilder<DataModel, "public"> = queryGeneric;
+export const internalQuery: QueryBuilder<DataModel, "internal"> = internalQueryGeneric;
+export const mutation: MutationBuilder<DataModel, "public"> = mutationGeneric;
+export const internalMutation: MutationBuilder<DataModel, "internal"> = internalMutationGeneric;
+export const action: ActionBuilder<DataModel, "public"> = actionGeneric;
+export const internalAction: ActionBuilder<DataModel, "internal"> = internalActionGeneric;
+export const httpAction: HttpActionBuilder = httpActionGeneric;
+export type QueryCtx = GenericQueryCtx<DataModel>;
+export type MutationCtx = GenericMutationCtx<DataModel>;
+export type ActionCtx = GenericActionCtx<DataModel>;
+EOF
+node "$ROOT/scripts/extract-doc-examples.mjs" examples "$ROOT/README.md" "$ROOT/docs/API.md"
+
 npx --no-install tsc -p tsconfig.json
-echo "OK    consumer type-check"
+echo "OK    consumer and docs examples type-check"
 
 echo "OK    test-package.sh"

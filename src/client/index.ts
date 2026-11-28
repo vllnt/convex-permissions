@@ -1,3 +1,10 @@
+/**
+ * Typed client for the `@vllnt/convex-permissions` Convex component: stored,
+ * runtime-editable roles, wildcard grants, and scoped multi-tenant checks.
+ *
+ * @see https://oss.vllnt.com/packages/convex-permissions
+ * @packageDocumentation
+ */
 import { ConvexError } from "convex/values";
 import type {
   FunctionArgs,
@@ -101,9 +108,16 @@ export class Permissions<
   TRole extends string = string,
   TAction extends string = string,
 > {
+  /** @param component The mounted component reference, `components.permissions`. */
   constructor(private readonly component: PermissionsComponent) {}
 
-  /** Create or update a role definition (upsert by name). */
+  /**
+   * Create or update a role definition (upsert by name). An update replaces the
+   * grants and description; an unchanged role writes nothing.
+   *
+   * @throws Error `role name must match /^[A-Za-z0-9_.:-]{1,128}$/` or
+   * `grant must be a non-empty string`.
+   */
   defineRole(
     ctx: RunMutationCtx,
     role: { name: TRole; grants: readonly (TAction | string)[]; description?: string },
@@ -117,12 +131,20 @@ export class Permissions<
     });
   }
 
-  /** Delete a role definition. Resolves true if a role was removed. */
+  /**
+   * Delete a role definition. Resolves true if a role was removed. Existing
+   * assignments of the role are kept and apply again if the name is redefined.
+   */
   removeRole(ctx: RunMutationCtx, name: TRole): Promise<boolean> {
     return ctx.runMutation(this.component.mutations.removeRole, { name });
   }
 
-  /** Assign a role to a subject. Resolves true if newly created. */
+  /**
+   * Assign a role to a subject, globally or in `scopeRef`. Resolves true if newly
+   * created. Does not require the role to be defined.
+   *
+   * @throws Error `<subjectRef|role|scopeRef> must match /^[A-Za-z0-9_.:-]{1,128}$/`.
+   */
   assign(
     ctx: RunMutationCtx,
     args: { subjectRef: string; role: TRole; scopeRef?: string },
@@ -130,7 +152,10 @@ export class Permissions<
     return ctx.runMutation(this.component.mutations.assign, args);
   }
 
-  /** Remove a role assignment. Resolves true if an assignment was removed. */
+  /**
+   * Remove the assignment that matches subject, role, and scope exactly. Resolves
+   * true if one was removed. Never validates its arguments.
+   */
   revoke(
     ctx: RunMutationCtx,
     args: { subjectRef: string; role: TRole; scopeRef?: string },
@@ -138,7 +163,10 @@ export class Permissions<
     return ctx.runMutation(this.component.mutations.revoke, args);
   }
 
-  /** Is the subject authorized to perform the action? */
+  /**
+   * Is the subject authorized to perform the action? Default-deny; an empty action
+   * is always denied. An unscoped check considers only global assignments.
+   */
   check(
     ctx: RunQueryCtx,
     args: { subjectRef: string; action: TAction; scopeRef?: string },
@@ -184,7 +212,7 @@ export class Permissions<
     return ctx.runQuery(this.component.queries.permissionsFor, args);
   }
 
-  /** All role definitions. */
+  /** All role definitions, in one unpaginated query. */
   listRoles(ctx: RunQueryCtx): Promise<RoleDoc[]> {
     return ctx.runQuery(this.component.queries.listRoles, {});
   }

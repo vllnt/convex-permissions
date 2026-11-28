@@ -1,7 +1,7 @@
 {
   "name": "@vllnt/convex-permissions",
   "version": "0.2.0",
-  "description": "Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs",
+  "description": "Role-based access control (RBAC) component for Convex: runtime-editable roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.8",
@@ -45,7 +45,7 @@
     "typecheck": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc/typecheck.tsbuildinfo",
     "typecheck:ci": "tsc --noEmit --incremental --tsBuildInfoFile node_modules/.cache/tsc/typecheck-ci.tsbuildinfo --project tsconfig.ci.json",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
-    "lint": "pnpm check:agents && pnpm check:package && eslint --cache --cache-location node_modules/.cache/eslint/ .",
+    "lint": "pnpm check:agents && pnpm check:package && pnpm check:docs && eslint --cache --cache-location node_modules/.cache/eslint/ .",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --typecheck --clearScreen false",
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
@@ -54,6 +54,8 @@
     "preversion": "pnpm install --frozen-lockfile && pnpm build && pnpm test:coverage && pnpm typecheck && pnpm generate:llms",
     "check:agents": "node -e \"const f=require('node:fs');if(!f.existsSync('AGENTS.md')||f.existsSync('CLAUDE.md')||f.existsSync('.claude'))process.exit(1)\"",
     "check:package": "node scripts/check-package.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "check:links": "node scripts/check-links.mjs",
     "codegen": "pnpm convex codegen --component-dir ./src/component"
   },
   "peerDependencies": {
@@ -99,8 +101,10 @@
   "keywords": [
     "convex",
     "convex-component",
-    "permissions",
+    "typescript",
     "rbac",
+    "role-based-access-control",
+    "permissions",
     "roles",
     "authorization",
     "access-control",
