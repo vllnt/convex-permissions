@@ -8,7 +8,7 @@
 | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | `@vllnt/convex-permissions`                      | `Permissions` class; types `PermissionsComponent`, `PermissionDenied`, `RoleDoc`     |
 | `@vllnt/convex-permissions/convex.config`        | Default export: the component definition for `app.use(...)`                            |
-| `@vllnt/convex-permissions/test`                 | `register(t, name = "permissions")` for `convex-test` (TypeScript source, see README) |
+| `@vllnt/convex-permissions/test`                 | `register(t, name = "permissions")` for a host-schema `convexTest` (TS source, see README) |
 | `@vllnt/convex-permissions/_generated/component` | Type `ComponentApi` (types only)                                                       |
 
 `/convex.config.js` and `/_generated/component.js` resolve to the same files.

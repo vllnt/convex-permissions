@@ -175,8 +175,9 @@ Tests run against the real component runtime via `convex-test`
 ### Testing your app
 
 `@vllnt/convex-permissions/test` exports `register(t, name = "permissions")` to
-mount the component in a `convex-test` instance. It needs `convex-test` and
-`vitest` (with Vite's `import.meta.glob`) in the consuming app:
+mount the component in a `convex-test` instance built from your app's own schema.
+It needs `convex-test` and `vitest` (with Vite's `import.meta.glob`) in the
+consuming app:
 
 ```ts
 /// <reference types="vite/client" />
