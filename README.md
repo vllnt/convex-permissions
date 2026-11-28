@@ -76,6 +76,8 @@ export const canEdit = query({
 });
 ```
 
+![Permissions (RBAC) — @vllnt/convex-permissions](https://raw.githubusercontent.com/vllnt/convex-permissions/main/.github/assets/thumbnail.png)
+
 Assign and check with the same host-owned subject ID. `subjectRef` must match `^[A-Za-z0-9_.:-]{1,128}$`; if your auth provider's `subject` has other characters, map it to your own user ID first.
 
 ## API
