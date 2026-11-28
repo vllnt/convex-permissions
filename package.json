@@ -1,6 +1,6 @@
 {
   "name": "@vllnt/convex-permissions",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Role-based access control as a Convex component — typed, sandboxed, runtime-editable roles and grants keyed by opaque refs",
   "license": "MIT",
   "type": "module",
@@ -90,7 +90,7 @@
     "url": "https://github.com/vllnt/convex-permissions"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "publishConfig": {
     "access": "public"
