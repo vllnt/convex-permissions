@@ -22,14 +22,14 @@ describe("roles", () => {
     });
     let roles = await t.query(api.example.listRoles, {});
     expect(roles).toHaveLength(1);
-    expect(roles[0].grants).toEqual(["doc.read", "doc.edit"]);
-    expect(roles[0].description).toBe("Editors");
+    expect(roles[0]?.grants).toEqual(["doc.read", "doc.edit"]);
+    expect(roles[0]?.description).toBe("Editors");
 
     // Re-defining the same role patches it in place (no duplicate row).
     await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.read"] });
     roles = await t.query(api.example.listRoles, {});
     expect(roles).toHaveLength(1);
-    expect(roles[0].grants).toEqual(["doc.read"]);
+    expect(roles[0]?.grants).toEqual(["doc.read"]);
   });
 
   test("removeRole returns true when present, false when absent", async () => {
@@ -255,7 +255,11 @@ describe("authorization hardening", () => {
     await t.mutation(api.example.assign, { subjectRef: "u1", role: "editor" });
 
     const can = (subjectRef: string, scopeRef?: string) =>
-      t.query(api.example.check, { subjectRef, action: "doc.edit", scopeRef });
+      t.query(api.example.check, {
+        subjectRef,
+        action: "doc.edit",
+        ...(scopeRef === undefined ? {} : { scopeRef }),
+      });
     // Look-alike subjects and scopes are distinct.
     expect(await can("u", "org")).toBe(false);
     expect(await can("u10", "org")).toBe(false);
@@ -295,7 +299,7 @@ describe("cost", () => {
         description: "Editors",
       });
       let roles = await t.query(api.example.listRoles, {});
-      expect(roles[0].updatedAt).toBe(1_000);
+      expect(roles[0]?.updatedAt).toBe(1_000);
 
       await t.mutation(api.example.defineRole, {
         name: "editor",
@@ -303,8 +307,8 @@ describe("cost", () => {
         description: "Editors",
       });
       roles = await t.query(api.example.listRoles, {});
-      expect(roles[0].updatedAt).toBe(2_000);
-      expect(roles[0].grants).toEqual(["doc.edit", "doc.read"]);
+      expect(roles[0]?.updatedAt).toBe(2_000);
+      expect(roles[0]?.grants).toEqual(["doc.edit", "doc.read"]);
 
       vi.setSystemTime(3_000);
       await t.mutation(api.example.defineRole, {
@@ -312,13 +316,13 @@ describe("cost", () => {
         grants: ["doc.edit", "doc.read"],
       });
       roles = await t.query(api.example.listRoles, {});
-      expect(roles[0].updatedAt).toBe(3_000);
-      expect(roles[0].description).toBeUndefined();
+      expect(roles[0]?.updatedAt).toBe(3_000);
+      expect(roles[0]?.description).toBeUndefined();
 
       vi.setSystemTime(4_000);
       await t.mutation(api.example.defineRole, { name: "editor", grants: ["doc.edit"] });
       roles = await t.query(api.example.listRoles, {});
-      expect(roles[0].updatedAt).toBe(4_000);
+      expect(roles[0]?.updatedAt).toBe(4_000);
     } finally {
       vi.useRealTimers();
     }
