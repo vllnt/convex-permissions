@@ -4,7 +4,9 @@ Full reference for every public export. Signatures, defaults, return shapes,
 errors, and validation rules are taken from `src/`.
 
 **Compatibility:** peer `convex@^1.45.0`, Node.js `>=20`, ESM
-(`"type": "module"`).
+(`"type": "module"`). The `/test` entry point also needs a `convex` version that
+the installed `convex-test` supports: convex-test 0.0.73 to 0.0.75 need
+`convex@^1.46.0`.
 
 ## Entry points
 
@@ -293,6 +295,8 @@ under `name`. Pass the same name the host uses in `app.use`.
 - The entry point is TypeScript source (`src/test.ts`) and uses Vite's
   `import.meta.glob`, so it needs `convex-test` and a Vite-based runner such as
   Vitest. It does not load in plain Node.js.
+- Install `vite` as a direct dev dependency: the example references
+  `vite/client` types, and pnpm does not hoist Vitest's own `vite`.
 
 ```ts
 /// <reference types="vite/client" />

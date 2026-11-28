@@ -48,7 +48,8 @@ All notable changes to this project are documented here. The format is based on
   linking every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
   Compatibility) and drops the Related packages list; `docs/API.md` documents every export,
   validation rule, and thrown error; the client has TSDoc on every method; `llms-full.txt` is
-  removed and `llms.txt` links the shipped docs instead. No runtime change.
+  removed and `llms.txt` links the shipped docs instead; the `/test` setup lists `vite` as a
+  direct dev dependency and the `convex-test` peer range for `convex`. No runtime change.
 - Releases: a stable version publishes only from a `vX.Y.Z` tag on `main`, and every merge to
   `main` publishes a `@canary` build; both use npm trusted publishing with provenance.
 - Internal: CI and the publish workflow (pinned actions, pnpm 10 through Corepack with a
