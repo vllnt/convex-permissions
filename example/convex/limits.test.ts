@@ -28,6 +28,14 @@ describe("role size limits", () => {
     expect((await t.query(api.example.listRoles, {}))[0]?.grants).toHaveLength(256);
   });
 
+  test("a new role over the limits is rejected and nothing is inserted", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.defineRole, { name: "fresh", grants: grantList(257) }),
+    ).rejects.toThrow(/a role may have at most 256 grants/);
+    expect(await t.query(api.example.listRoles, {})).toEqual([]);
+  });
+
   test("a grant may have 256 characters, not 257", async () => {
     const t = setup();
     await t.mutation(api.example.defineRole, { name: "r", grants: ["a".repeat(256)] });
@@ -152,6 +160,21 @@ describe("roles stored before the size limits", () => {
     const role = await storedRole();
     expect(role?.grants).toEqual([longGrant, "g0"]);
     expect(role?.description).toBe("short");
+  });
+
+  test("omitting the description clears an oversized one", async () => {
+    const { define, storedRole } = await setupLegacy();
+    await define(legacyGrants);
+    const role = await storedRole();
+    expect(role?.description).toBeUndefined();
+    expect(role?.grants).toEqual(legacyGrants);
+  });
+
+  test("short grants can be swapped for 256-character ones without gaining grants", async () => {
+    const { define, storedRole } = await setupLegacy();
+    const wide = grantList(300).map((grant) => grant.padEnd(256, "w"));
+    await define(wide, legacyDescription);
+    expect((await storedRole())?.grants).toEqual(wide);
   });
 
   test("an oversized role cannot grow", async () => {
