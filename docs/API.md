@@ -1,109 +1,361 @@
-# API Reference — @vllnt/convex-permissions
+# API reference: @vllnt/convex-permissions
 
-**Compatibility:** `convex@^1.45.0`
+Full reference for every public export. Signatures, defaults, return shapes,
+errors, and validation rules are taken from `src/`.
+
+**Compatibility:** peer `convex@^1.45.0`, Node.js `>=20`, ESM
+(`"type": "module"`).
 
 ## Entry points
 
-| Import                                           | Exports                                                                                |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `@vllnt/convex-permissions`                      | `Permissions` class; types `PermissionsComponent`, `PermissionDenied`, `RoleDoc`     |
-| `@vllnt/convex-permissions/convex.config`        | Default export: the component definition for `app.use(...)`                            |
-| `@vllnt/convex-permissions/test`                 | `register(t, name = "permissions")` for a host-schema `convexTest` (TS source, see README) |
-| `@vllnt/convex-permissions/_generated/component` | Type `ComponentApi` (types only)                                                       |
+| Import                                           | Exports                                                                                                                                                    |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@vllnt/convex-permissions`                      | [`Permissions`](#permissions) class; types [`PermissionsComponent`](#permissionscomponent), [`PermissionDenied`](#permissiondenied), [`RoleDoc`](#roledoc) |
+| `@vllnt/convex-permissions/convex.config`        | [Default export](#convexconfig-default-export): the component definition for `app.use(...)`                                                                |
+| `@vllnt/convex-permissions/test`                 | [`register`](#register) for `convex-test` (TypeScript source)                                                                                              |
+| `@vllnt/convex-permissions/_generated/component` | Type [`ComponentApi`](#componentapi) (types only)                                                                                                          |
 
-`/convex.config.js` and `/_generated/component.js` resolve to the same files.
+`/convex.config.js` and `/_generated/component.js` resolve to the same files as
+`/convex.config` and `/_generated/component`.
 
-The public surface is the `Permissions` client class (`src/client/index.ts`),
-generic over the host's role and action unions:
+## Permissions client
+
+### Permissions
 
 ```ts
 import { Permissions } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
 
 type Role = "admin" | "editor" | "viewer";
 type Action = "doc.read" | "doc.edit" | "doc.delete";
 
-const permissions = new Permissions<Role, Action>(components.permissions);
+export const permissions = new Permissions<Role, Action>(
+  components.permissions,
+);
 ```
 
-`TRole` and `TAction` default to `string`. `assign`, `revoke`, `removeRole`, `check`, and
-`require` are typed against them; `defineRole` grants accept any string and are not checked
-against `TAction`.
+- Signature:
+  `new Permissions<TRole extends string = string, TAction extends string = string>(component: PermissionsComponent)`.
+- `component` is the mounted component reference, `components.permissions` from
+  the host's `./_generated/api` (or `components.<name>` when mounted with
+  `app.use(permissions, { name })`).
+- `TRole` types the `name` of `defineRole`, the `name` of `removeRole`, and the
+  `role` of `assign` and `revoke`. `TAction` types the `action` of `check` and
+  `require`. Both default to `string`.
+- `defineRole` grants are typed `readonly (TAction | string)[]`, so grants are
+  not checked against `TAction`. `rolesFor` and `permissionsFor` return
+  `string[]`, not `TRole[]` or `TAction[]`.
+- The constructor stores the reference only. It makes no call and never throws.
 
-Every method takes the host `ctx` first. The mutating methods (`defineRole`, `removeRole`,
-`assign`, `revoke`) need a `ctx` with `runMutation` (mutation or action); the read methods
-(`check`, `require`, `rolesFor`, `permissionsFor`, `listRoles`) need a `ctx` with `runQuery`
-(query, mutation, or action).
+Every method takes the host `ctx` first:
 
-## Mutations
+- Mutating methods (`defineRole`, `removeRole`, `assign`, `revoke`) need a `ctx`
+  with `runMutation`: a mutation or action `ctx`.
+- Read methods (`check`, `require`, `rolesFor`, `permissionsFor`, `listRoles`)
+  need a `ctx` with `runQuery`: a query, mutation, action, or HTTP action `ctx`.
 
-Require a mutation or action `ctx`.
+### defineRole
 
-| Method                                            | Args                     | Returns            | Notes                                |
-| ------------------------------------------------- | ------------------------ | ------------------ | ------------------------------------ |
-| `defineRole(ctx, { name, grants, description? })` | role name + grant list   | `Promise<null>`    | Upsert by name — runtime-editable    |
-| `removeRole(ctx, name)`                           | role name                | `Promise<boolean>` | `true` if a role was removed         |
-| `assign(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if newly created (idempotent) |
-| `revoke(ctx, { subjectRef, role, scopeRef? })`    | subject + role (+ scope) | `Promise<boolean>` | `true` if an assignment was removed  |
+`defineRole(ctx, role: { name: TRole; grants: readonly (TAction | string)[]; description?: string }): Promise<null>`
 
-`removeRole` deletes the role definition only: existing assignments stay and apply again if a
-role with the same name is defined later. Revoke the role from its holders first, or don't reuse
-the name.
+Creates the role, or replaces the grants and description of the role with that
+`name` (upsert by name).
 
-`assign` does not check that the role is defined. An assignment to an undefined role grants
-nothing until a role with that name is defined, and `rolesFor` still lists it.
+- `name` must match `^[A-Za-z0-9_.:-]{1,128}$`, else it throws
+  `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`.
+- Each grant must be a non-empty string, else it throws
+  `grant must be a non-empty string`. Grants have no other pattern or length
+  check.
+- An update replaces both fields. Omitting `description` on an update removes
+  the stored description.
+- When the grants (same order) and the description equal the stored role, it
+  writes nothing: `updatedAt` stays the same and subscribed queries do not
+  re-run. A different grant order counts as a change.
+- On a write, `updatedAt` is set to `Date.now()`.
 
-## Queries
+### removeRole
 
-Accept a query, mutation, or action `ctx`.
+`removeRole(ctx, name: TRole): Promise<boolean>`
 
-| Method                                            | Args                       | Returns              | Notes                                          |
-| ------------------------------------------------- | -------------------------- | -------------------- | ---------------------------------------------- |
-| `check(ctx, { subjectRef, action, scopeRef? })`   | subject + action (+ scope) | `Promise<boolean>`   | Default-deny                                   |
-| `require(ctx, { subjectRef, action, scopeRef? })` | subject + action (+ scope) | `Promise<void>`      | Throws `ConvexError<PermissionDenied>` on deny |
-| `rolesFor(ctx, { subjectRef, scopeRef? })`        | subject (+ scope)          | `Promise<string[]>`  | Assigned role names, sorted                    |
-| `permissionsFor(ctx, { subjectRef, scopeRef? })`  | subject (+ scope)          | `Promise<string[]>`  | Distinct grants, sorted                        |
-| `listRoles(ctx)`                                  | —                          | `Promise<RoleDoc[]>` | All role definitions                           |
+Deletes the role definition. Resolves `true` if a role was deleted, `false` if
+no role had that name.
 
-`RoleDoc = { _id; _creationTime; name; grants; description?; updatedAt }`.
+- Does not validate `name` and never throws for a malformed name.
+- Keeps every assignment of the role. While no role has that name, those
+  assignments grant nothing, but `rolesFor` still lists them. If a role with the
+  same name is defined again, they grant its new grants. Revoke the holders
+  first, or never reuse the name.
+- The component exposes no query that lists the holders of a role. Keep your own
+  record of who you assigned if you need to revoke them all.
+
+### assign
+
+`assign(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string }): Promise<boolean>`
+
+Assigns `role` to `subjectRef`, globally (no `scopeRef`) or in one scope.
+Resolves `true` if the assignment was created, `false` if it already existed
+(idempotent).
+
+- `subjectRef`, `role`, and `scopeRef` (when given) must match
+  `^[A-Za-z0-9_.:-]{1,128}$`, else it throws
+  `subjectRef must match /^[A-Za-z0-9_.:-]{1,128}$/`,
+  `role must match /^[A-Za-z0-9_.:-]{1,128}$/`, or
+  `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`. An empty `scopeRef` (`""`)
+  throws; omit the field for a global assignment.
+- Does not check that the role is defined. The assignment grants nothing until a
+  role with that name exists.
+- A global assignment and a scoped assignment of the same role are separate
+  rows.
+
+### revoke
+
+`revoke(ctx, args: { subjectRef: string; role: TRole; scopeRef?: string }): Promise<boolean>`
+
+Deletes the one assignment that matches `subjectRef`, `role`, and `scopeRef`
+exactly. Resolves `true` if it deleted one, `false` otherwise.
+
+- Never validates its arguments and never throws for malformed refs, so rows
+  stored by 0.1.0 (before `scopeRef` validation) can still be revoked.
+- Omitting `scopeRef` revokes only the global assignment; it leaves scoped
+  assignments of the same role in place, and the reverse.
+
+### check
+
+`check(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string }): Promise<boolean>`
+
+Resolves `true` if a role assigned to `subjectRef` has a grant that matches
+`action` (see [Grant matching](#grant-matching)), else `false`.
+
+- Default-deny: no assignment, no defined role, or no matching grant resolves
+  `false`.
+- An empty `action` (`""`) always resolves `false`, even with a `"*"` grant.
+- Unscoped: considers only global assignments. Scoped: considers global
+  assignments plus the assignments in that `scopeRef` (see
+  [Scopes](#scopes-multi-tenant)).
+- Never validates its arguments and never throws for malformed refs.
+
+### require
+
+`require(ctx, args: { subjectRef: string; action: TAction; scopeRef?: string }): Promise<void>`
+
+Runs `check` and resolves when it is `true`. When it is `false`, it throws a
+`ConvexError` whose `data` is a [`PermissionDenied`](#permissiondenied):
+
+```ts
+import type { PermissionDenied } from "@vllnt/convex-permissions";
+
+export const example: PermissionDenied = {
+  code: "FORBIDDEN",
+  subjectRef: "user_1",
+  action: "doc.delete",
+  scopeRef: "org_1",
+};
+```
+
+`scopeRef` is `undefined` when the check had no scope. The error is thrown in
+the host function, so the host can catch it. See [Error codes](#error-codes) for
+how to detect it.
+
+### rolesFor
+
+`rolesFor(ctx, args: { subjectRef: string; scopeRef?: string }): Promise<string[]>`
+
+Role names assigned to `subjectRef` that apply in the scope (global, plus the
+scope when given), without duplicates, sorted. Includes assigned role names that
+have no definition. Unknown subjects resolve `[]`. Never throws for malformed
+refs.
+
+### permissionsFor
+
+`permissionsFor(ctx, args: { subjectRef: string; scopeRef?: string }): Promise<string[]>`
+
+The stored grant strings of the defined roles from `rolesFor`, without
+duplicates, sorted. Wildcard grants are returned as stored (`"doc.*"`, `"*"`),
+not expanded into actions. Unknown subjects resolve `[]`. Never throws for
+malformed refs.
+
+### listRoles
+
+`listRoles(ctx): Promise<RoleDoc[]>`
+
+Every role definition as a [`RoleDoc`](#roledoc), in one query with no
+pagination.
+
+## Types
+
+### PermissionsComponent
+
+The shape the `Permissions` constructor accepts: the component's function
+references as mounted on the host.
+
+```ts
+import type { PermissionsComponent } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
+
+export const mounted: PermissionsComponent = components.permissions;
+```
+
+- `mutations`: `defineRole`, `removeRole`, `assign`, `revoke`.
+- `queries`: `check`, `rolesFor`, `permissionsFor`, `listRoles`.
+
+The generated [`ComponentApi`](#componentapi) satisfies it; the package test
+checks this.
+
+### PermissionDenied
+
+The `data` of the `ConvexError` thrown by [`require`](#require):
+
+```ts
+export interface PermissionDenied {
+  code: "FORBIDDEN";
+  subjectRef: string;
+  action: string;
+  scopeRef?: string;
+}
+```
+
+`PermissionDenied` is an interface without an index signature, so
+`ConvexError<PermissionDenied>` does not satisfy the `Value` constraint of
+`ConvexError`. Narrow with `error instanceof ConvexError` and read
+`error.data as PermissionDenied`.
+
+### RoleDoc
+
+A stored role definition, as returned by [`listRoles`](#listroles):
+
+```ts
+export interface RoleDoc {
+  _id: string;
+  _creationTime: number;
+  name: string;
+  grants: string[];
+  description?: string;
+  updatedAt: number;
+}
+```
+
+`updatedAt` is the `Date.now()` of the last write by `defineRole`.
+
+## Other entry points
+
+### convex.config default export
+
+`import permissions from "@vllnt/convex-permissions/convex.config"` is the
+component definition, created with `defineComponent("permissions")`. Mount it in
+the host's `convex/convex.config.ts`:
+
+```ts
+import { defineApp } from "convex/server";
+import permissions from "@vllnt/convex-permissions/convex.config";
+
+const app = defineApp();
+app.use(permissions);
+
+export default app;
+```
+
+The default mount name is `permissions`, so the host reference is
+`components.permissions`.
+
+### register
+
+`register<TSchema extends GenericSchema>(t: TestConvex<SchemaDefinition<TSchema, boolean>>, name = "permissions"): void`
+
+From `@vllnt/convex-permissions/test`. Registers the component's schema and
+functions on a `convex-test` instance built from the host app's own schema,
+under `name`. Pass the same name the host uses in `app.use`.
+
+- The entry point is TypeScript source (`src/test.ts`) and uses Vite's
+  `import.meta.glob`, so it needs `convex-test` and a Vite-based runner such as
+  Vitest. It does not load in plain Node.js.
+
+```ts
+/// <reference types="vite/client" />
+import { Permissions } from "@vllnt/convex-permissions";
+import { register } from "@vllnt/convex-permissions/test";
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { components } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+const permissions = new Permissions(components.permissions);
+
+test("an editor can edit", async () => {
+  const t = convexTest(schema, modules);
+  register(t);
+  const allowed = await t.mutation(async (ctx) => {
+    await permissions.defineRole(ctx, { name: "editor", grants: ["doc.*"] });
+    await permissions.assign(ctx, { subjectRef: "user_1", role: "editor" });
+    return permissions.check(ctx, { subjectRef: "user_1", action: "doc.edit" });
+  });
+  expect(allowed).toBe(true);
+});
+```
+
+### ComponentApi
+
+`ComponentApi<Name extends string | undefined = string | undefined>` from
+`@vllnt/convex-permissions/_generated/component` (types only). It is the type
+Convex codegen gives `components.permissions` in the host's `_generated/api`.
+Use it to type a parameter that receives the mounted component:
+
+```ts
+import { Permissions } from "@vllnt/convex-permissions";
+import type { ComponentApi } from "@vllnt/convex-permissions/_generated/component";
+
+export function createPermissions(component: ComponentApi): Permissions {
+  return new Permissions(component);
+}
+```
 
 ## Error codes
 
-| Code        | Thrown by | Description                                                     |
-| ----------- | --------- | --------------------------------------------------------------- |
-| `FORBIDDEN` | `require` | Subject does not hold a matching grant for the requested action |
+| Error                                                                                  | Thrown by    | Cause                                                      |
+| -------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
+| `ConvexError` with `data.code` `"FORBIDDEN"` ([`PermissionDenied`](#permissiondenied)) | `require`    | No role of the subject has a grant that matches the action |
+| `Error`: `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`                             | `defineRole` | `name` does not match the token pattern                    |
+| `Error`: `grant must be a non-empty string`                                            | `defineRole` | A grant is `""`                                            |
+| `Error`: `subjectRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                            | `assign`     | `subjectRef` does not match the token pattern              |
+| `Error`: `role must match /^[A-Za-z0-9_.:-]{1,128}$/`                                  | `assign`     | `role` does not match the token pattern                    |
+| `Error`: `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                              | `assign`     | `scopeRef` is given and does not match (including `""`)    |
 
-`require` throws
-`ConvexError<{ code: "FORBIDDEN"; subjectRef: string; action: string; scopeRef?: string }>`.
-
-Boundary validation throws a plain `Error` (not `ConvexError`) when:
-
-- a `defineRole` `name`, or an `assign` `subjectRef`, `role`, or `scopeRef`, does not match
-  `^[A-Za-z0-9_.:-]{1,128}$`;
-- a `defineRole` grant is an empty string (`grant must be a non-empty string`).
-
-`defineRole` with the same grants (same order) and description as the stored role writes
-nothing, so it does not bump `updatedAt` or re-run subscribed `check` queries.
-
-`removeRole`, `revoke`, and the read queries never throw on malformed refs; they match exactly and
-return `false` / empty. `check` and `require` always deny an empty `action`.
+- The validation errors are plain `Error`s thrown inside the component mutation,
+  not `ConvexError`s. They reach the host as a failed `runMutation`; the message
+  contains the text above.
+- `require` throws in the host function. Detect it with
+  `error instanceof ConvexError && (error.data as PermissionDenied).code === "FORBIDDEN"`.
+- Arguments of the wrong type fail Convex argument validation before any
+  component code runs.
+- `removeRole`, `revoke`, `check`, `rolesFor`, `permissionsFor`, and `listRoles`
+  never throw for malformed refs; they match exactly and resolve `false` or
+  `[]`.
 
 ## Grant matching
 
-- **exact** — `"doc.edit"` authorizes `"doc.edit"`
-- **prefix wildcard** — `"doc.*"` authorizes `"doc.read"`, `"doc.edit"`, …
-- **global wildcard** — `"*"` authorizes everything (a super-role is just a role
-  granted `"*"`)
+A grant matches an action when:
+
+- **exact**: the grant equals the action (`"doc.edit"` matches `"doc.edit"`);
+- **global wildcard**: the grant is `"*"` (matches every non-empty action; a
+  super-role is a role granted `"*"`);
+- **prefix wildcard**: the grant ends in `.*` and the action starts with the
+  grant minus the `*` (`"doc.*"` matches `"doc.read"` and `"doc.page.edit"`, not
+  `"doc"` or `"docs.read"`).
+
+Any other `*` is a literal character: `"doc*"` and `"*.read"` match only the
+identical action string. An empty action never matches.
 
 ## Scopes (multi-tenant)
 
-An assignment with no `scopeRef` is **global** — it applies in every scope. A
-scoped assignment applies only when `check` / `require` is called with the same
-`scopeRef`. A scoped check therefore considers the subject's global **and**
-in-scope roles; an unscoped check considers only global roles.
+An assignment without `scopeRef` is global: it applies in every scope. A scoped
+assignment applies only when `check`, `require`, `rolesFor`, or `permissionsFor`
+is called with the same `scopeRef`. A scoped call considers the subject's global
+and in-scope assignments; an unscoped call considers only global assignments.
+Refs are compared exactly (case-sensitive, no prefix matching).
 
 ## Out of scope
 
-This component is a **decision engine** (can subject X do action Y?). It does
-not answer "list every resource X can see" — relationship/listing queries belong
-with your resource data and indexes. Relationship-based access control (ReBAC)
-is a candidate for a future major version.
+This component answers "may subject X perform action Y (in scope Z)?". It does
+not list the resources a subject can access, model relationships between
+resources, evaluate attribute conditions, or authenticate callers. The host
+resolves identity and scope and passes them in as opaque strings.

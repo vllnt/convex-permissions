@@ -25,6 +25,17 @@ All notable changes to this project are documented here. The format is based on
 - `defineRole` skips the write when grants and description are unchanged: no `updatedAt`
   bump, no re-run of subscribed `check` / `permissionsFor` queries, no OCC contention.
 - `homepage` points to https://oss.vllnt.com/packages/convex-permissions.
+- `description` is now "Role-based access control (RBAC) component for Convex: runtime-editable
+  roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client." and is the
+  same sentence in `README.md` and `llms.txt`. `keywords` add `typescript` and
+  `role-based-access-control`.
+- README restructured for coding agents: When to use, Install, Quick start, an API table that
+  links every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
+  Compatibility, and Links. The Related packages list is removed: no other package is used with
+  this one in code. `docs/API.md` documents every export with an anchor; `llms.txt` adds when to
+  use, the errors table, and the Ecosystem links.
+- TSDoc on the client entry, its methods (thrown errors, no-op and scope rules), and the
+  `convex.config` default export. No runtime change.
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push
   to `main` that touches the package or its shipped docs publishes a canary (`@canary` dist-tag
   only), both with npm trusted publishing and provenance; actions are pinned to commit SHAs.

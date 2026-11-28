@@ -1,226 +1,386 @@
-<!-- Badges -->
-
-[![Convex Component](https://img.shields.io/badge/convex-component-EE342F.svg)](https://www.convex.dev/components)
-[![npm version](https://img.shields.io/npm/v/@vllnt/convex-permissions.svg)](https://www.npmjs.com/package/@vllnt/convex-permissions)
-[![CI](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml/badge.svg)](https://github.com/vllnt/convex-permissions/actions/workflows/ci.yml)
-[![License](https://img.shields.io/npm/l/@vllnt/convex-permissions.svg)](./LICENSE)
-
 # @vllnt/convex-permissions
 
-Role-based access control as a Convex component — typed, sandboxed,
-runtime-editable roles and grants keyed by opaque refs.
+Role-based access control (RBAC) component for Convex: runtime-editable roles, wildcard grants, scoped multi-tenant checks, and a typed TypeScript client.
 
-```ts
-// Define a role, assign it, enforce it — all from host functions.
-await permissions.defineRole(ctx, {
-  name: "editor",
-  grants: ["doc.read", "doc.edit"],
-});
-await permissions.assign(ctx, { subjectRef: userId, role: "editor" });
-await permissions.require(ctx, { subjectRef: userId, action: "doc.edit" }); // throws on deny
-```
+## For coding agents
 
-## Features
+Docs matching the installed version ship in `node_modules/@vllnt/convex-permissions/`: `README.md`, `docs/API.md`, `CHANGELOG.md`, `llms.txt`, and the TypeScript source in `src/`.
+Read [docs/API.md](./docs/API.md) for signatures and [Errors and fixes](#errors-and-fixes) for every thrown error.
 
-- **Stored, runtime-editable RBAC** — roles, grants, and assignments live in
-  sandboxed tables; change them with a mutation, no redeploy.
-- **Typed end to end** — `Permissions<TRole, TAction>` is generic over your role
-  and action unions.
-- **Wildcard grants** — `"doc.*"` grants every `doc.` action; `"*"` grants
-  everything.
-- **Scoped / multi-tenant** — assign within an opaque `scopeRef`; unscoped
-  assignments apply globally.
-- **Agnostic by construction** — opaque `subjectRef` / `scopeRef`, no auth
-  library, no domain model, no vendor.
-- **`require` throws** — `ConvexError<PermissionDenied>` the host maps to a 403.
-- **Default-deny** — unknown subjects and unmatched actions are denied.
-- **Runs anywhere** — identical on Convex Cloud and self-hosted
-  `convex-backend`.
+## When to use
 
-## Installation
+Use it when:
+
+- Roles and their grants must change at runtime, from a mutation, without a redeploy.
+- A subject holds different roles per tenant, org, or workspace (an opaque `scopeRef`).
+- You need default-deny checks from Convex queries, mutations, actions, and HTTP actions, typed by your own role and action unions.
+
+Do not use it when:
+
+- Access depends on relationships between resources (ReBAC, such as "can edit every doc in a folder I own"): model the relationships in your own tables and indexes.
+- Access depends on attributes of the resource or request (ABAC, such as owner, status, or time): check those fields in your own query or mutation code.
+- Roles are fixed at deploy time: a typed `Record<Role, Action[]>` helper in your own code needs no tables and no component calls.
+
+## Install
 
 ```bash
 npm install @vllnt/convex-permissions
 ```
 
-Requires `convex@^1.45.0`. The command installs the latest stable release; use
-`@vllnt/convex-permissions@canary` for the current prerelease. Pin a resolved
-canary version for reproducible installs.
+Needs `convex@^1.45.0`. This installs the `latest` release; `@vllnt/convex-permissions@canary` is the newest prerelease. The copy of these docs in `node_modules` matches the version you installed.
 
-### For coding agents
+## Quick start
 
-The package bundles its docs at `node_modules/@vllnt/convex-permissions/`:
-`README.md`, `docs/API.md`, `CHANGELOG.md`, `llms.txt`, and the TypeScript
-source in `src/`. They match the installed version. Read them before writing
-code that uses this package.
-
-## Usage
+Mount the component in `convex/convex.config.ts`:
 
 ```ts
-// convex/convex.config.ts
 import { defineApp } from "convex/server";
 import permissions from "@vllnt/convex-permissions/convex.config";
 
 const app = defineApp();
 app.use(permissions);
+
 export default app;
 ```
 
+Provision a role from an internal mutation and check it from a query, in `convex/docs.ts`:
+
 ```ts
-// convex/permissions.ts
-import { components } from "./_generated/api";
-import { query } from "./_generated/server";
-import { v } from "convex/values";
 import { Permissions } from "@vllnt/convex-permissions";
+import { v } from "convex/values";
+import { components } from "./_generated/api";
+import { internalMutation, query } from "./_generated/server";
 
 type Role = "admin" | "editor" | "viewer";
 type Action = "doc.read" | "doc.edit" | "doc.delete";
 
-export const permissions = new Permissions<Role, Action>(
-  components.permissions,
-);
+const permissions = new Permissions<Role, Action>(components.permissions);
+
+// Internal: run it from the dashboard, the CLI, or your own admin-only mutation.
+export const makeEditor = internalMutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    await permissions.defineRole(ctx, {
+      name: "editor",
+      grants: ["doc.read", "doc.edit"],
+    });
+    await permissions.assign(ctx, { subjectRef: userId, role: "editor" });
+    return null;
+  },
+});
 
 export const canEdit = query({
-  args: { orgId: v.string() },
-  handler: async (ctx, { orgId }) => {
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return false;
-    // Use the same host-owned subject mapping as your role assignments.
+    if (identity === null) return false;
     return permissions.check(ctx, {
       subjectRef: identity.subject,
       action: "doc.edit",
-      scopeRef: orgId,
     });
   },
 });
 ```
 
-Use one consistent identity-to-`subjectRef` mapping for assignments and checks.
-Role names, subject refs, and the `scopeRef` passed to `assign` must match
-`^[A-Za-z0-9_.:-]{1,128}$`, and grants must be non-empty strings; this example
-assumes one identity provider with compatible subjects. Otherwise map identities
-to host-owned identifiers first.
+Assign and check with the same host-owned subject ID. `subjectRef` must match `^[A-Za-z0-9_.:-]{1,128}$`; if your auth provider's `subject` has other characters, map it to your own user ID first.
 
-Provision roles only from host mutations protected by your admin policy:
+## API
+
+Full signatures, defaults, and return shapes: [docs/API.md](./docs/API.md).
+
+| Export                                            | Kind                        | What it does                                                               | Reference                                                  |
+| ------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `new Permissions<TRole, TAction>(component)`      | class                       | Typed client; pass `components.permissions`                                | [Permissions](./docs/API.md#permissions)                   |
+| `defineRole(ctx, { name, grants, description? })` | method, needs `runMutation` | Create or replace a role (upsert by name); resolves `null`                 | [defineRole](./docs/API.md#definerole)                     |
+| `removeRole(ctx, name)`                           | method, needs `runMutation` | Delete a role definition, keep its assignments; resolves `true` if deleted | [removeRole](./docs/API.md#removerole)                     |
+| `assign(ctx, { subjectRef, role, scopeRef? })`    | method, needs `runMutation` | Assign a role globally or in a scope; resolves `true` if created           | [assign](./docs/API.md#assign)                             |
+| `revoke(ctx, { subjectRef, role, scopeRef? })`    | method, needs `runMutation` | Delete the exact assignment; resolves `true` if deleted                    | [revoke](./docs/API.md#revoke)                             |
+| `check(ctx, { subjectRef, action, scopeRef? })`   | method, needs `runQuery`    | Resolves `true` if allowed, `false` otherwise (default-deny)               | [check](./docs/API.md#check)                               |
+| `require(ctx, { subjectRef, action, scopeRef? })` | method, needs `runQuery`    | Resolves if allowed; throws `ConvexError` with `code: "FORBIDDEN"` if not  | [require](./docs/API.md#require)                           |
+| `rolesFor(ctx, { subjectRef, scopeRef? })`        | method, needs `runQuery`    | Sorted role names that apply in the scope                                  | [rolesFor](./docs/API.md#rolesfor)                         |
+| `permissionsFor(ctx, { subjectRef, scopeRef? })`  | method, needs `runQuery`    | Sorted distinct grant strings that apply in the scope                      | [permissionsFor](./docs/API.md#permissionsfor)             |
+| `listRoles(ctx)`                                  | method, needs `runQuery`    | Every role definition as `RoleDoc[]`                                       | [listRoles](./docs/API.md#listroles)                       |
+| `PermissionsComponent`                            | type                        | Shape of the mounted component reference the constructor accepts           | [PermissionsComponent](./docs/API.md#permissionscomponent) |
+| `PermissionDenied`                                | type                        | `data` of the `ConvexError` thrown by `require`                            | [PermissionDenied](./docs/API.md#permissiondenied)         |
+| `RoleDoc`                                         | type                        | A stored role, as returned by `listRoles`                                  | [RoleDoc](./docs/API.md#roledoc)                           |
+| `@vllnt/convex-permissions/convex.config`         | default export              | Component definition for `app.use(...)`                                    | [convex.config](./docs/API.md#convexconfig-default-export) |
+| `register(t, name = "permissions")` from `/test`  | function                    | Mount the component on a `convex-test` instance                            | [register](./docs/API.md#register)                         |
+| `ComponentApi` from `/_generated/component`       | type                        | Generated type of `components.permissions`                                 | [ComponentApi](./docs/API.md#componentapi)                 |
+
+## Common tasks
+
+### Check a role in one tenant (scoped, multi-tenant)
+
+A scoped check sees global assignments plus that scope's; an unscoped check sees only global assignments.
 
 ```ts
-// Inside an authorized host mutation; userId and orgId are host-resolved refs.
-await permissions.defineRole(ctx, {
-  name: "editor",
-  grants: ["doc.read", "doc.edit"],
+import { Permissions } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
+
+const permissions = new Permissions(components.permissions);
+
+export async function addOrgEditor(
+  ctx: MutationCtx,
+  userId: string,
+  orgId: string,
+) {
+  await permissions.assign(ctx, {
+    subjectRef: userId,
+    role: "editor",
+    scopeRef: orgId,
+  });
+}
+
+export async function canEditInOrg(
+  ctx: QueryCtx,
+  userId: string,
+  orgId: string,
+) {
+  return permissions.check(ctx, {
+    subjectRef: userId,
+    action: "doc.edit",
+    scopeRef: orgId,
+  });
+}
+```
+
+### Grant a group of actions with a wildcard, or everything with a super-role
+
+`"doc.*"` matches every action that starts with `doc.`; `"*"` matches every non-empty action.
+
+```ts
+import { Permissions } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
+import type { MutationCtx } from "./_generated/server";
+
+const permissions = new Permissions(components.permissions);
+
+export async function seedRoles(ctx: MutationCtx) {
+  await permissions.defineRole(ctx, {
+    name: "doc-admin",
+    grants: ["doc.*"],
+    description: "Every doc action",
+  });
+  await permissions.defineRole(ctx, {
+    name: "superadmin",
+    grants: ["*"],
+    description: "Every action",
+  });
+}
+```
+
+### Return HTTP 403 when require denies access
+
+`require` throws a `ConvexError`; read `error.data as PermissionDenied` (the interface does not satisfy `ConvexError`'s `Value` type argument).
+
+```ts
+import { Permissions, type PermissionDenied } from "@vllnt/convex-permissions";
+import { httpRouter } from "convex/server";
+import { ConvexError } from "convex/values";
+import { components } from "./_generated/api";
+import { httpAction } from "./_generated/server";
+
+const permissions = new Permissions(components.permissions);
+const http = httpRouter();
+
+http.route({
+  path: "/docs/delete",
+  method: "POST",
+  handler: httpAction(async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) return new Response(null, { status: 401 });
+    try {
+      await permissions.require(ctx, {
+        subjectRef: identity.subject,
+        action: "doc.delete",
+      });
+    } catch (error) {
+      if (
+        error instanceof ConvexError &&
+        (error.data as PermissionDenied).code === "FORBIDDEN"
+      ) {
+        return Response.json(error.data, { status: 403 });
+      }
+      throw error;
+    }
+    return new Response(null, { status: 204 });
+  }),
 });
-await permissions.assign(ctx, {
-  subjectRef: userId,
-  role: "editor",
-  scopeRef: orgId,
-});
-await permissions.require(ctx, {
-  subjectRef: userId,
-  action: "doc.edit",
-  scopeRef: orgId,
+
+export default http;
+```
+
+### Revoke holders before removing a role
+
+`removeRole` keeps assignments, and they grant again if the name is reused. The component has no query that lists a role's holders, so pass the ones you assigned.
+
+```ts
+import { Permissions } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
+import type { MutationCtx } from "./_generated/server";
+
+const permissions = new Permissions(components.permissions);
+
+export async function retireRole(
+  ctx: MutationCtx,
+  role: string,
+  holders: { subjectRef: string; scopeRef?: string }[],
+) {
+  for (const holder of holders) {
+    await permissions.revoke(ctx, { ...holder, role });
+  }
+  return permissions.removeRole(ctx, role);
+}
+```
+
+### List roles and permissions
+
+`permissionsFor` returns stored grant strings, wildcards included, not expanded actions.
+
+```ts
+import { Permissions } from "@vllnt/convex-permissions";
+import { components } from "./_generated/api";
+import type { QueryCtx } from "./_generated/server";
+
+const permissions = new Permissions(components.permissions);
+
+export async function accessSummary(
+  ctx: QueryCtx,
+  userId: string,
+  orgId: string,
+) {
+  const roles = await permissions.rolesFor(ctx, {
+    subjectRef: userId,
+    scopeRef: orgId,
+  });
+  const grants = await permissions.permissionsFor(ctx, {
+    subjectRef: userId,
+    scopeRef: orgId,
+  });
+  const definitions = await permissions.listRoles(ctx);
+  return { roles, grants, roleCount: definitions.length };
+}
+```
+
+### Test your app with register
+
+Needs `convex-test` and Vitest (Vite's `import.meta.glob`).
+
+```ts
+/// <reference types="vite/client" />
+import { Permissions } from "@vllnt/convex-permissions";
+import { register } from "@vllnt/convex-permissions/test";
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { components } from "./_generated/api";
+import schema from "./schema";
+
+const modules = import.meta.glob("./**/*.ts");
+const permissions = new Permissions(components.permissions);
+
+test("a scoped editor can edit only in their org", async () => {
+  const t = convexTest(schema, modules);
+  register(t);
+  const result = await t.mutation(async (ctx) => {
+    await permissions.defineRole(ctx, { name: "editor", grants: ["doc.*"] });
+    await permissions.assign(ctx, {
+      subjectRef: "user_1",
+      role: "editor",
+      scopeRef: "org_1",
+    });
+    return {
+      inOrg: await permissions.check(ctx, {
+        subjectRef: "user_1",
+        action: "doc.edit",
+        scopeRef: "org_1",
+      }),
+      global: await permissions.check(ctx, {
+        subjectRef: "user_1",
+        action: "doc.edit",
+      }),
+    };
+  });
+  expect(result).toEqual({ inOrg: true, global: false });
 });
 ```
 
-A scoped check includes global grants plus that scope's grants; an unscoped
-check includes only global grants. `check`/`require` do not authenticate
-callers, and `require` throws rather than producing an HTTP response.
+## Errors and fixes
 
-## API Reference
+| Error                                                                          | Thrown by    | Cause                                                                           | Fix                                                                          |
+| ------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `ConvexError`, `data` = `{ code: "FORBIDDEN", subjectRef, action, scopeRef? }` | `require`    | No role of the subject has a grant that matches the action                      | Catch it and map it to a 403, or assign a role whose grants match the action |
+| `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`                              | `defineRole` | `name` has a character outside `A-Za-z0-9_.:-`, is empty, or is longer than 128 | Use 1 to 128 letters, digits, `_`, `.`, `:`, or `-`                          |
+| `grant must be a non-empty string`                                             | `defineRole` | A grant is `""`                                                                 | Remove empty grants                                                          |
+| `subjectRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                             | `assign`     | `subjectRef` is outside the token pattern                                       | Map the identity to an ID of 1 to 128 letters, digits, `_`, `.`, `:`, or `-` |
+| `role must match /^[A-Za-z0-9_.:-]{1,128}$/`                                   | `assign`     | `role` is outside the token pattern                                             | Use the same valid name you passed to `defineRole`                           |
+| `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                               | `assign`     | `scopeRef` is given and is outside the pattern, including `""`                  | Omit `scopeRef` for a global assignment, or pass a valid scope ID            |
 
-| Method                                            | Kind     | Result                                  |
-| ------------------------------------------------- | -------- | --------------------------------------- |
-| `defineRole(ctx, { name, grants, description? })` | mutation | Upsert a role (runtime-editable)        |
-| `removeRole(ctx, name)`                           | mutation | Delete a role by name                   |
-| `assign(ctx, { subjectRef, role, scopeRef? })`    | mutation | Grant a role to a subject               |
-| `revoke(ctx, { subjectRef, role, scopeRef? })`    | mutation | Remove a role from a subject            |
-| `check(ctx, { subjectRef, action, scopeRef? })`   | query    | Boolean permission check (default-deny) |
-| `require(ctx, { subjectRef, action, scopeRef? })` | query    | Enforce access — throws on deny         |
-| `rolesFor(ctx, { subjectRef, scopeRef? })`        | query    | List role names for a subject           |
-| `permissionsFor(ctx, { subjectRef, scopeRef? })`  | query    | List distinct grants for a subject      |
-| `listRoles(ctx)`                                  | query    | All role definitions                    |
+The five validation errors are plain `Error`s (not `ConvexError`) from the component mutation; match on the message text. Arguments of the wrong type fail Convex argument validation first. See [Error codes](./docs/API.md#error-codes).
 
-Full reference: [docs/API.md](docs/API.md).
+## Limits and gotchas
 
-## Security
+- Token pattern: role names (`defineRole`, `assign`), `subjectRef`, and `scopeRef` on `assign` must match `^[A-Za-z0-9_.:-]{1,128}$`, at most 128 characters.
+- Grants only need to be non-empty; actions are never validated.
+- Default-deny: no assignment, no defined role, or no matching grant means `check` resolves `false` and `require` throws.
+- An empty action (`""`) is always denied, even with a `"*"` grant.
+- Wildcards: only `"*"` and a trailing `.*` widen; `"doc.*"` does not match `"doc"`, and any other `*` is literal.
+- An unscoped check sees only global assignments; a scoped assignment never applies to it.
+- `assign` does not require the role to exist; the assignment grants nothing until the role is defined, but `rolesFor` lists it.
+- `removeRole` keeps the role's assignments; defining the same name again re-activates them. No query lists a role's holders.
+- `revoke` never validates its arguments and deletes only the exact (subject, role, scope) row; `removeRole` does not validate the name.
+- `check`, `rolesFor`, and `permissionsFor` never throw for malformed refs; they resolve `false` or `[]`, and `require` throws `FORBIDDEN`.
+- `defineRole` replaces grants and description; omitting `description` on an update removes it. An unchanged role (same grants in the same order, same description) writes nothing.
+- `listRoles` returns every role in one query, with no pagination.
+- The component cannot read `ctx.auth` ([Convex docs](https://docs.convex.dev/components/authoring): "Within a component, `ctx.auth` is not available"). Authenticate in the host and pass `subjectRef`.
+- Typing: `defineRole` grants accept any string, so grant typos are not type errors; `rolesFor` and `permissionsFor` return `string[]`.
 
-- **Host owns auth** — it authenticates the caller, resolves identity to an
-  opaque `subjectRef`, and gates the management methods behind its own admin
-  authorization.
-- **Opaque refs only** — `subjectRef`, `scopeRef`, and action keys are arbitrary
-  strings; tables are sandboxed (reached only via the client).
-- **Default-deny** — no matching grant ⇒ denied (an empty action is always
-  denied); boundary validation rejects refs not matching
-  `^[A-Za-z0-9_.:-]{1,128}$` and empty grants.
-- **The host owns auth** — a component cannot read `ctx.auth`. Resolve identity
-  in the host, and call `defineRole` / `assign` / `revoke` only from mutations
-  your own admin policy protects.
-- **Removing a role keeps its assignments** — `removeRole` deletes the
-  definition only. Existing assignments grant nothing while the role is absent,
-  but become active again if a role with the same name is defined later. Revoke
-  the role from its holders before removing it, or never reuse a removed role
-  name.
+## Compatibility
 
-See [docs/API.md](docs/API.md).
+- Peer dependency `convex@^1.45.0`; `engines.node` `>=20`; ESM package (`"type": "module"`).
+- Convex Cloud and self-hosted: the component uses only standard component APIs (`defineComponent`, `ctx.db`, `runQuery`, `runMutation`) and no deployment-specific API. This repo's tests run on `convex-test`, not on a live deployment.
+- `/test` ships as TypeScript source and uses `import.meta.glob`: it needs `convex-test` and Vitest or another Vite-based runner.
 
 ## Testing
 
 ```bash
-pnpm test           # single run
-pnpm test:coverage  # enforced 100% on covered files
+pnpm test
+pnpm test:coverage
+pnpm test:package
 ```
 
-Tests run against the real component runtime via `convex-test`
-(`@edge-runtime/vm`), not mocks.
+Tests run the component with `convex-test` on the `@edge-runtime/vm` environment, with no mocks; `pnpm test:coverage` enforces 100% coverage. `pnpm test:package` packs the tarball, type-checks a strict consumer, and type-checks every `ts` example in this README and `docs/API.md` against it.
 
-### Testing your app
+## Security
 
-`@vllnt/convex-permissions/test` exports `register(t, name = "permissions")` to
-mount the component in a `convex-test` instance built from your app's own schema.
-It needs `convex-test` and `vitest` (with Vite's `import.meta.glob`) in the
-consuming app:
-
-```ts
-/// <reference types="vite/client" />
-import { convexTest } from "convex-test";
-import { register } from "@vllnt/convex-permissions/test";
-import schema from "./schema";
-
-const t = convexTest(schema, import.meta.glob("./**/*.ts"));
-register(t);
-```
+- The host authenticates callers, maps them to an opaque `subjectRef`, and chooses the `scopeRef`.
+- Call `defineRole`, `removeRole`, `assign`, and `revoke` only from internal functions or mutations your own admin policy protects; the component does not check who calls them.
+- The component tables are reachable only through the component's functions.
+- Report vulnerabilities as described in the [security policy](https://github.com/vllnt/convex-permissions/blob/main/SECURITY.md).
 
 ## Related packages
 
-- [`@vllnt/convex-memberships`](https://www.npmjs.com/package/@vllnt/convex-memberships)
-  — who belongs to what (flat `(member, resource, relation)` tuples). Use it to
-  record membership and relationships; use this package to decide whether a
-  subject may perform an action.
-- [`@vllnt/convex-invitations`](https://www.npmjs.com/package/@vllnt/convex-invitations)
-  — single-use, expiring invites. `accept` returns the grant; the host can
-  apply it with `assign` here.
-- [`@vllnt/convex-api-keys`](https://www.npmjs.com/package/@vllnt/convex-api-keys)
-  — create, validate, rotate, and revoke API keys. Use it to authenticate
-  machine callers, then pass the resolved owner as `subjectRef` to `check` or
-  `require`.
+No other package is used with this one in code: its only runtime peer is `convex`, and its tests and example mount no other component.
 
 ## Contributing
 
-See [CONTRIBUTING.md](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md).
+See the [contributing guide](https://github.com/vllnt/convex-permissions/blob/main/CONTRIBUTING.md) for setup, checks, and releases.
 
-## Author
+## Links
 
-Built by [bntvllnt](https://github.com/bntvllnt) ·
-[bntvllnt.com](https://bntvllnt.com) · [X @bntvllnt](https://x.com/bntvllnt)
-
-Part of the [@vllnt](https://github.com/vllnt) Convex component fleet —
-[vllnt.com](https://vllnt.com)
-
-If this is useful, [sponsor the work](https://github.com/sponsors/bntvllnt).
+- Docs and changelog: [oss.vllnt.com/packages/convex-permissions](https://oss.vllnt.com/packages/convex-permissions) · [release feed](https://oss.vllnt.com/packages/convex-permissions/rss.xml)
+- All @vllnt packages: [oss.vllnt.com](https://oss.vllnt.com) · [search packages and docs on index.vllnt.com](https://index.vllnt.com)
+- Source and issues: [GitHub](https://github.com/vllnt/convex-permissions) · [issues](https://github.com/vllnt/convex-permissions/issues) · [npm](https://www.npmjs.com/package/@vllnt/convex-permissions)
+- Questions and updates: [Discord](https://bntvllnt.com/discord) · [X @bntvllnt](https://x.com/bntvllnt)
+- Company and author: [vllnt.com](https://vllnt.com) · [bntvllnt.com](https://bntvllnt.com) · [GitHub @bntvllnt](https://github.com/bntvllnt) · [LinkedIn](https://linkedin.com/in/bntvllnt)
+- Sponsor: [GitHub Sponsors](https://github.com/sponsors/bntvllnt)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](./LICENSE).
 
 ---
 
-Part of vllnt oss: [https://oss.vllnt.com](https://oss.vllnt.com)
+Part of [vllnt open source](https://oss.vllnt.com) · [Package page](https://oss.vllnt.com/packages/convex-permissions) · [vllnt.com](https://vllnt.com) · Built by [bntvllnt](https://bntvllnt.com)
