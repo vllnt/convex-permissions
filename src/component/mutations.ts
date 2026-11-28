@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server.js";
-import { assertGrant, assertToken, sameGrants } from "../shared.js";
+import { assertGrant, assertRoleLimits, assertToken, sameGrants } from "../shared.js";
 
 /** Create or update a role definition (upsert by name). Idempotent. */
 export const defineRole = mutation({
@@ -17,6 +17,7 @@ export const defineRole = mutation({
       .query("roles")
       .withIndex("by_name", (q) => q.eq("name", args.name))
       .unique();
+    assertRoleLimits(args.grants, args.description, existing);
     if (existing !== null) {
       if (
         existing.description === args.description &&

@@ -64,8 +64,20 @@ Creates the role, or replaces the grants and description of the role with that
 - `name` must match `^[A-Za-z0-9_.:-]{1,128}$`, else it throws
   `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`.
 - Each grant must be a non-empty string, else it throws
-  `grant must be a non-empty string`. Grants have no other pattern or length
-  check.
+  `grant must be a non-empty string`. Grants have no pattern check.
+- Size limits, counted as JavaScript string length (UTF-16 code units: `"é"`
+  counts 1, most emoji count 2):
+  - at most 256 grants, else it throws `a role may have at most 256 grants`;
+  - each grant at most 256 characters, else it throws
+    `grant must be at most 256 characters`;
+  - `description` at most 1024 characters, else it throws
+    `description must be at most 1024 characters`.
+- A role stored before these limits (by 0.1.0) may exceed them. It stays
+  readable by every query, and `defineRole` can update it as long as it does not
+  grow: the grant count may stay or shrink, the description may keep or lower
+  its length, and a grant longer than 256 characters is accepted only as many
+  times as the stored role holds it (kept, never added or duplicated). Once the
+  role fits the limits, they apply in full.
 - An update replaces both fields. Omitting `description` on an update removes
   the stored description.
 - When the grants (same order) and the description equal the stored role, it
@@ -311,14 +323,17 @@ export function createPermissions(component: ComponentApi): Permissions {
 
 ## Error codes
 
-| Error                                                                                  | Thrown by    | Cause                                                      |
-| -------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
-| `ConvexError` with `data.code` `"FORBIDDEN"` ([`PermissionDenied`](#permissiondenied)) | `require`    | No role of the subject has a grant that matches the action |
-| `Error`: `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`                             | `defineRole` | `name` does not match the token pattern                    |
-| `Error`: `grant must be a non-empty string`                                            | `defineRole` | A grant is `""`                                            |
-| `Error`: `subjectRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                            | `assign`     | `subjectRef` does not match the token pattern              |
-| `Error`: `role must match /^[A-Za-z0-9_.:-]{1,128}$/`                                  | `assign`     | `role` does not match the token pattern                    |
-| `Error`: `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                              | `assign`     | `scopeRef` is given and does not match (including `""`)    |
+| Error                                                                                  | Thrown by    | Cause                                                                                 |
+| -------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------- |
+| `ConvexError` with `data.code` `"FORBIDDEN"` ([`PermissionDenied`](#permissiondenied)) | `require`    | No role of the subject has a grant that matches the action                            |
+| `Error`: `role name must match /^[A-Za-z0-9_.:-]{1,128}$/`                             | `defineRole` | `name` does not match the token pattern                                               |
+| `Error`: `grant must be a non-empty string`                                            | `defineRole` | A grant is `""`                                                                       |
+| `Error`: `a role may have at most 256 grants`                                          | `defineRole` | More than 256 grants, and more than the stored role has                               |
+| `Error`: `grant must be at most 256 characters`                                        | `defineRole` | A grant over 256 UTF-16 code units that the stored role does not hold that many times |
+| `Error`: `description must be at most 1024 characters`                                 | `defineRole` | A description over 1024 UTF-16 code units and longer than the stored one              |
+| `Error`: `subjectRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                            | `assign`     | `subjectRef` does not match the token pattern                                         |
+| `Error`: `role must match /^[A-Za-z0-9_.:-]{1,128}$/`                                  | `assign`     | `role` does not match the token pattern                                               |
+| `Error`: `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                              | `assign`     | `scopeRef` is given and does not match (including `""`)                               |
 
 - The validation errors are plain `Error`s thrown inside the component mutation,
   not `ConvexError`s. They reach the host function as a failed `runMutation`
