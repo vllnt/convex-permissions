@@ -13,9 +13,9 @@ All notable changes to this project are documented here. The format is based on
   `llms.txt` links shipped files relatively. `pnpm lint` fails when a required file is missing
   from the tarball or a contributor-only file would ship.
 - `pnpm check:docs` (part of `pnpm lint`) fails when the README sections, API table, errors
-  table, relative links, code-block language tags, or the fixed Links, footer, and `llms.txt`
-  Ecosystem blocks drift from the code. `pnpm check:links` requests every external docs URL
-  (its own CI step). `pnpm test:package` type-checks every `ts` example in `README.md` and
+  table, README version line, relative links, code-block language tags, or the fixed Links,
+  footer, and `llms.txt` Ecosystem blocks drift from the code. `pnpm check:links` requests every external docs URL
+  except npmjs.com (its own CI job). `pnpm test:package` type-checks every `ts` example in `README.md` and
   `docs/API.md` against the packed tarball.
 
 ### Changed
@@ -38,7 +38,7 @@ All notable changes to this project are documented here. The format is based on
   links every export into `docs/API.md`, Common tasks, Errors and fixes, Limits and gotchas,
   Compatibility, and Links. The Related packages list is removed: no other package is used with
   this one in code. `docs/API.md` documents every export with an anchor; `llms.txt` adds when to
-  use, the errors table, and the Ecosystem links.
+  use, links to the README errors and limits sections, and the Ecosystem links.
 - TSDoc on the client entry, its methods (thrown errors, no-op and scope rules), and the
   `convex.config` default export. No runtime change.
 - Release workflow: stable releases publish only from a `vX.Y.Z` tag on `main`, and every push

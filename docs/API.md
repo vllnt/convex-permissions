@@ -321,15 +321,19 @@ export function createPermissions(component: ComponentApi): Permissions {
 | `Error`: `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                              | `assign`     | `scopeRef` is given and does not match (including `""`)    |
 
 - The validation errors are plain `Error`s thrown inside the component mutation,
-  not `ConvexError`s. They reach the host as a failed `runMutation`; the message
-  contains the text above.
+  not `ConvexError`s. They reach the host function as a failed `runMutation`
+  call; under `convex-test` the error message contains the text above. Match on
+  it only in host code: Convex redacts errors that are not `ConvexError` to
+  "Server Error" for clients of a production deployment
+  ([Convex error handling](https://docs.convex.dev/functions/error-handling)).
 - `require` throws in the host function. Detect it with
   `error instanceof ConvexError && (error.data as PermissionDenied).code === "FORBIDDEN"`.
 - Arguments of the wrong type fail Convex argument validation before any
   component code runs.
-- `removeRole`, `revoke`, `check`, `rolesFor`, `permissionsFor`, and `listRoles`
-  never throw for malformed refs; they match exactly and resolve `false` or
-  `[]`.
+- `removeRole`, `revoke`, `check`, `rolesFor`, and `permissionsFor` never
+  validate refs and never throw for malformed ones. They match stored rows
+  exactly. A ref that current `assign` rejects finds nothing (`false` or `[]`)
+  unless 0.1.0 stored it, and `revoke` can then delete that row (`true`).
 
 ## Grant matching
 

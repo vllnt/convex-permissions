@@ -9,17 +9,12 @@ Read [docs/API.md](./docs/API.md) for signatures and [Errors and fixes](#errors-
 
 ## When to use
 
-Use it when:
-
-- Roles and their grants must change at runtime, from a mutation, without a redeploy.
-- A subject holds different roles per tenant, org, or workspace (an opaque `scopeRef`).
-- You need default-deny checks from Convex queries, mutations, actions, and HTTP actions, typed by your own role and action unions.
-
-Do not use it when:
-
-- Access depends on relationships between resources (ReBAC, such as "can edit every doc in a folder I own"): model the relationships in your own tables and indexes.
-- Access depends on attributes of the resource or request (ABAC, such as owner, status, or time): check those fields in your own query or mutation code.
-- Roles are fixed at deploy time: a typed `Record<Role, Action[]>` helper in your own code needs no tables and no component calls.
+- Use it when roles and their grants must change at runtime, from a mutation, without a redeploy.
+- Use it when a subject holds different roles per tenant, org, or workspace (an opaque `scopeRef`).
+- Use it when you need default-deny checks from Convex queries, mutations, actions, and HTTP actions, typed by your own role and action unions.
+- Do not use it when access depends on relationships between resources (ReBAC, such as "can edit every doc in a folder I own"): model the relationships in your own tables and indexes.
+- Do not use it when access depends on attributes of the resource or request (ABAC, such as owner, status, or time): check those fields in your own query or mutation code.
+- Do not use it when roles are fixed at deploy time: a typed `Record<Role, Action[]>` helper in your own code needs no tables and no component calls.
 
 ## Install
 
@@ -27,25 +22,22 @@ Do not use it when:
 npm install @vllnt/convex-permissions
 ```
 
-Needs `convex@^1.45.0`. This installs the `latest` release; `@vllnt/convex-permissions@canary` is the newest prerelease. The copy of these docs in `node_modules` matches the version you installed.
+These docs describe version 0.2.0. If `npm view @vllnt/convex-permissions version` prints an older version, install `@vllnt/convex-permissions@canary` or read the README inside your installed package.
+Peer dependency: `convex@^1.45.0`.
 
 ## Quick start
 
-Mount the component in `convex/convex.config.ts`:
-
 ```ts
+// convex/convex.config.ts: mount the component.
 import { defineApp } from "convex/server";
 import permissions from "@vllnt/convex-permissions/convex.config";
-
 const app = defineApp();
 app.use(permissions);
-
 export default app;
 ```
 
-Provision a role from an internal mutation and check it from a query, in `convex/docs.ts`:
-
 ```ts
+// convex/docs.ts: provision a role from an internal mutation, check it from a query.
 import { Permissions } from "@vllnt/convex-permissions";
 import { v } from "convex/values";
 import { components } from "./_generated/api";
@@ -202,7 +194,10 @@ http.route({
         error instanceof ConvexError &&
         (error.data as PermissionDenied).code === "FORBIDDEN"
       ) {
-        return Response.json(error.data, { status: 403 });
+        return new Response(JSON.stringify(error.data), {
+          status: 403,
+          headers: { "content-type": "application/json" },
+        });
       }
       throw error;
     }
@@ -318,7 +313,7 @@ test("a scoped editor can edit only in their org", async () => {
 | `role must match /^[A-Za-z0-9_.:-]{1,128}$/`                                   | `assign`     | `role` is outside the token pattern                                             | Use the same valid name you passed to `defineRole`                           |
 | `scopeRef must match /^[A-Za-z0-9_.:-]{1,128}$/`                               | `assign`     | `scopeRef` is given and is outside the pattern, including `""`                  | Omit `scopeRef` for a global assignment, or pass a valid scope ID            |
 
-The five validation errors are plain `Error`s (not `ConvexError`) from the component mutation; match on the message text. Arguments of the wrong type fail Convex argument validation first. See [Error codes](./docs/API.md#error-codes).
+The five validation errors are plain `Error`s, not `ConvexError`s. They reach the host function as a failed `runMutation` call; under `convex-test` the error message contains the text above. Match on it only in host code: Convex redacts errors that are not `ConvexError` to "Server Error" for clients of a production deployment ([Convex error handling](https://docs.convex.dev/functions/error-handling)). Arguments of the wrong type fail Convex argument validation first. See [Error codes](./docs/API.md#error-codes).
 
 ## Limits and gotchas
 
@@ -331,7 +326,7 @@ The five validation errors are plain `Error`s (not `ConvexError`) from the compo
 - `assign` does not require the role to exist; the assignment grants nothing until the role is defined, but `rolesFor` lists it.
 - `removeRole` keeps the role's assignments; defining the same name again re-activates them. No query lists a role's holders.
 - `revoke` never validates its arguments and deletes only the exact (subject, role, scope) row; `removeRole` does not validate the name.
-- `check`, `rolesFor`, and `permissionsFor` never throw for malformed refs; they resolve `false` or `[]`, and `require` throws `FORBIDDEN`.
+- `check`, `rolesFor`, and `permissionsFor` never validate refs and never throw for malformed ones. They match stored rows exactly, so a ref that `assign` rejects finds nothing (`false` or `[]`) unless 0.1.0 stored a row with it.
 - `defineRole` replaces grants and description; omitting `description` on an update removes it. An unchanged role (same grants in the same order, same description) writes nothing.
 - `listRoles` returns every role in one query, with no pagination.
 - The component cannot read `ctx.auth` ([Convex docs](https://docs.convex.dev/components/authoring): "Within a component, `ctx.auth` is not available"). Authenticate in the host and pass `subjectRef`.
@@ -357,7 +352,7 @@ Tests run the component with `convex-test` on the `@edge-runtime/vm` environment
 
 - The host authenticates callers, maps them to an opaque `subjectRef`, and chooses the `scopeRef`.
 - Call `defineRole`, `removeRole`, `assign`, and `revoke` only from internal functions or mutations your own admin policy protects; the component does not check who calls them.
-- The component tables are reachable only through the component's functions.
+- Host code cannot read the component tables directly, only through the component's functions. Deployment admins can still read and edit them in the Convex dashboard.
 - Report vulnerabilities as described in the [security policy](https://github.com/vllnt/convex-permissions/blob/main/SECURITY.md).
 
 ## Related packages
